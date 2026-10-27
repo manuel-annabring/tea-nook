@@ -46,6 +46,7 @@ Planned pins (checked against npm on 2026-10-27, nothing installed yet). Slice 0
 - vite 8.3.5, @vitejs/plugin-react 6.1.2
 - typescript 6.0.3 (see below), eslint 10.13.0, typescript-eslint 8.72.1
 - vitest 5.0.5
+- leva 0.10.1 (dev tweak panel only, approved in slice 1; loaded lazily under `import.meta.env.DEV`, not in the production bundle)
 - gltfjsx 6.5.3 (one-off via npx, not a dependency)
 - Node v26.7.0 (Vite needs ^20.19 or >=22.12)
 
@@ -158,3 +159,6 @@ Note: `src/shaders/` is added to the folder list Manuel gave so GLSL has a home;
 ## Lessons learned
 
 (Add hard-won lessons here as they come up.)
+
+- The `react-hooks` lint rules (React Compiler) reject mutating a value that came from `useMemo`, `useState` or a hook argument inside a component, including `material.uniforms.x.value = ...` in `useFrame` or an effect. Put uniform mutations in plain helper functions (`applyLook`, `tickSteam` in `src/nook/steamMaterial.ts`) and call them from the component.
+- After editing a file with several Edit calls, Vite hot reload can log a stale `does not provide an export named ...` error from the half-edited state. Reload the page before treating it as real.
