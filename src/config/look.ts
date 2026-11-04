@@ -42,11 +42,11 @@ export interface LightPreset {
 export const LIGHT_PRESETS = {
   morning: {
     sunColor: '#FFF1D6',
-    sunIntensity: 2.4,
-    sunPosition: [0.6, 1, 0.5],
+    sunIntensity: 4.8,
+    sunPosition: [-0.95, 1.0, -0.45],
     fillSkyColor: '#BFD8F0',
     fillGroundColor: '#F2E6D0',
-    fillIntensity: 1.6,
+    fillIntensity: 3.6,
   },
   evening: {
     sunColor: '#FF9A57',
@@ -72,13 +72,47 @@ export interface CameraPose {
 /**
  * Baked ambient occlusion of `Room` (slice 2.4, texture `public/models/room_ao.png` on the `UV_AO` layer).
  * `intensity` is three's `aoMapIntensity`: 0 = off, 1 = as baked. three applies it to the indirect (hemisphere)
- * light only, so the sun-lit parts darken less than the shaded ones; 1.6 makes the contact shadows readable. Keep it
+ * light only (the live sun shadow covers the sun, D-051); 1.3 keeps the contact shading without smudged panels. Keep it
  * at or below 1 / (1 - FLOOR) = 1.67 (FLOOR 0.40 in `tools/blender/steps/05_ao_bake.py`), above that three's
  * `1 + (ao - 1) * intensity` goes negative in the darkest corners and shows as dark or coloured fringes.
  */
 export const AO = {
-  intensity: 1.6,
+  intensity: 1.3,
 } as const
+
+/**
+ * The one live shadow of the sun (slice 2.5, decision in DECISIONS.md and SPEC section 10). `mode`: `off` = baked AO
+ * only, `live` = shadow map rendered every frame, `static` = rendered once (nothing that casts moves). In dev
+ * `?shadow=off|live|static` overrides it for measuring. The shadow camera is orthographic, sits at the sun position
+ * and looks at the world origin. `left`, `right`, `bottom`, `top` (meters, in the camera's own axes) and the depth
+ * range (`near` meters in front of the origin towards the sun, `far` meters behind it) were fitted to the bounding box
+ * of the diorama for the morning sun position: they must be re-fitted when `LIGHT_PRESETS.morning.sunPosition`
+ * changes. Texel size is about 1.1 to 1.4 mm.
+ */
+export const SHADOW = {
+  mode: 'live',
+  mapSize: 1024,
+  /** Softness of the PCF edge, in shadow-map texels. */
+  radius: 3,
+  bias: -0.0004,
+  normalBias: 0.003,
+  left: -0.5,
+  right: 0.59,
+  bottom: -0.53,
+  top: 0.89,
+  near: 0.65,
+  far: 0.8,
+} as const
+
+/**
+ * Output tone mapping. `aces` is r3f's default (filmic: it greys and darkens the flat palette colours). `neutral` is
+ * three's Khronos PBR Neutral: colours below about 0.8 stay as authored and only the bright sun patch is compressed,
+ * which suits flat stylized materials. `exposure` scales the light before mapping.
+ */
+export const TONE = {
+  mapping: 'neutral' as 'neutral' | 'aces' | 'none',
+  exposure: 1,
+}
 
 /** Canvas and page background, behind the diorama. */
 export const BACKGROUND_COLOR = '#E9DFCB'
@@ -98,14 +132,19 @@ export const CAMERA = {
     side: { azimuth: 90, polar: 75, distance: 2.6 },
     top: { azimuth: 0, polar: 5, distance: 2.6 },
   },
-  /** Orbit limits, applied to the controls (panning is off). Angles in degrees. */
+  /**
+   * Orbit limits, applied to the controls (panning is off). Angles in degrees. Slice 2.5: the azimuth starts at 0
+   * (straight on) because from the left of that the window wall stands in front of the cabinet, mug and kettle (it is
+   * the cut-away corner's outside). The distance minimum keeps the kettle steam column inside a 1280 x 720 view in
+   * the steepest pose; the maximum keeps the diorama from shrinking to a postage stamp.
+   */
   limits: {
-    azimuthMin: -35,
-    azimuthMax: 35,
+    azimuthMin: 0,
+    azimuthMax: 40,
     polarMin: 55,
     polarMax: 80,
-    distanceMin: 1.5,
-    distanceMax: 3.4,
+    distanceMin: 1.8,
+    distanceMax: 3.2,
   },
 } as const satisfies { presets: Record<string, CameraPose> } & Record<string, unknown>
 

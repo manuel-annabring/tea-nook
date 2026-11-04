@@ -7,6 +7,7 @@ import { frameCamera } from '../scene/framing.ts'
 import { assertContract } from './contract.ts'
 import { Model } from './NookModel.generated.tsx'
 import { applyPalette } from './palette.ts'
+import { applyShadowFlags } from './shadows.ts'
 import { applyRoomAo, configureAoTexture, detachRoomAo, ROOM_AO_URL } from './roomAo.ts'
 import { Steam } from './Steam.tsx'
 
@@ -29,6 +30,7 @@ export function Nook() {
     if (!root.current) return
     if (import.meta.env.DEV) assertContract(root.current)
     applyPalette(root.current)
+    applyShadowFlags(root.current)
     for (const [name, ref] of [
       ['Steam_Tea', teaMarker],
       ['Steam_Kettle', kettleMarker],

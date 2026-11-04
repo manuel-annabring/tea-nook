@@ -1,6 +1,6 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
-import { Box3, MathUtils, Raycaster, Spherical, Vector2, Vector3, type Camera, type Material, type Object3D, type Scene, type ShaderMaterial, type WebGLRenderer } from 'three'
+import { Box3, DirectionalLight, HemisphereLight, MathUtils, Raycaster, Spherical, Vector2, Vector3, type Camera, type Material, type Object3D, type Scene, type ShaderMaterial, type WebGLRenderer } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CAMERA, type CameraPresetName } from '../config/look.ts'
 import type { SteamUniforms } from '../nook/steamMaterial.ts'
@@ -29,6 +29,23 @@ interface NookHooks {
   snapshot: () => string
   pick: (x: number, y: number) => string | null
   stats: () => { drawCalls: number; triangles: number }
+  /** Live values of the sun and the hemisphere fill in the scene (to compare with `LIGHT_PRESETS.morning`). */
+  lights: () => {
+    sun: { color: string; intensity: number; position: [number, number, number]; castShadow: boolean; mapSize: number } | null
+    fill: { skyColor: string; groundColor: string; intensity: number } | null
+    toneMapping: number
+    shadowMapEnabled: boolean
+  }
+  /**
+   * Runs `controls.update()` `frames` times at once, so damped orbit input (drags, wheel) settles without waiting for
+   * real frames (the built-in browser pane only runs requestAnimationFrame at 1 Hz while hidden).
+   */
+  settle: (frames?: number) => void
+  /**
+   * Renders back to back for `ms` milliseconds (blocks the page), reading one pixel after each render so the GPU has
+   * finished. Returns the average time per frame. rAF deltas are capped at the display rate, this is not.
+   */
+  benchmark: (ms: number) => { frames: number; avgMs: number; drawCalls: number; triangles: number }
   worldPosition: (objectName: string) => { x: number; y: number; z: number } | null
   /** Screen pixels of a world point (for example a point inside a steam column). */
   projectPoint: (x: number, y: number, z: number) => { x: number; y: number }
@@ -193,6 +210,50 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
     stats() {
       const { render } = rigRef.current.gl.info
       return { drawCalls: render.calls, triangles: render.triangles }
+    },
+    lights() {
+      const { scene, gl } = rigRef.current
+      let sun: ReturnType<NookHooks['lights']>['sun'] = null
+      let fill: ReturnType<NookHooks['lights']>['fill'] = null
+      scene.traverse((node) => {
+        if (node instanceof DirectionalLight) {
+          sun = {
+            color: `#${node.color.getHexString().toUpperCase()}`,
+            intensity: node.intensity,
+            position: [node.position.x, node.position.y, node.position.z],
+            castShadow: node.castShadow,
+            mapSize: node.shadow.mapSize.x,
+          }
+        } else if (node instanceof HemisphereLight) {
+          fill = {
+            skyColor: `#${node.color.getHexString().toUpperCase()}`,
+            groundColor: `#${node.groundColor.getHexString().toUpperCase()}`,
+            intensity: node.intensity,
+          }
+        }
+      })
+      return { sun, fill, toneMapping: gl.toneMapping, shadowMapEnabled: gl.shadowMap.enabled }
+    },
+    settle(frames = 200) {
+      const { controls } = rigRef.current
+      if (!controls) return
+      for (let i = 0; i < frames; i += 1) controls.update()
+    },
+    benchmark(ms) {
+      const { gl, scene, camera } = rigRef.current
+      const ctx = gl.getContext()
+      const pixel = new Uint8Array(4)
+      let frames = 0
+      const start = performance.now()
+      let now = start
+      while (now - start < ms) {
+        gl.render(scene, camera)
+        ctx.readPixels(0, 0, 1, 1, ctx.RGBA, ctx.UNSIGNED_BYTE, pixel)
+        frames += 1
+        now = performance.now()
+      }
+      const { render } = gl.info
+      return { frames, avgMs: (now - start) / frames, drawCalls: render.calls, triangles: render.triangles }
     },
     worldPosition(name) {
       const obj = find(name)

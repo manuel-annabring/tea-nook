@@ -676,10 +676,10 @@ Acceptance criteria:
 **Settled by recommendation** (veto any of them now, otherwise they are decisions):
 
 - **AO bake scope** (slice 2.4): `Room` only; `Mug` and `Kettle` stay flat colored.
-- **Shadows** (slice 2.5): baked AO only, unless one live shadow costs under 1 ms per frame and clearly improves contact shadows. Decided there from measurements.
+- ~~**Shadows** (slice 2.5): baked AO only, unless one live shadow costs under 1 ms per frame and clearly improves contact shadows.~~ **Decided 2026-11-04 (slice 2.5, D-048):** one live directional shadow (1024 map, `PCFShadowMap`, shadow camera fitted to the diorama; casters `Room`, `Mug`, `Kettle`). Measured in the built-in pane, back-to-back render with readPixels over 5 s: off 16 draw calls, 6014 triangles, 1.43 to 1.47 ms; live 27 draw calls, 8950 triangles, 1.57 to 1.64 ms (+0.15 ms); static 16 and 6014, 1.52 to 1.57 ms. Under 1 ms, and it creates the window sun patch that baked AO cannot. A proxy only (this Mac's GPU, not the owner's laptop). `SHADOW.mode` in `look.ts` can switch to `static` or `off`.
 - **Typography** (slice 3.2): system font stack, no web font.
 - **Pointer swirl** (idea from slice 0.2): not built. Noted in `STATUS.md`; it can become a slice after the phase 3 review.
-- **Camera defaults and limits**: slice 1.4 uses the proposal (3/4 view from front-right, azimuth about +-35 degrees, polar 55 to 80 degrees); slice 2.5 tunes them on the final model.
+- ~~**Camera defaults and limits**: slice 1.4 uses the proposal (3/4 view from front-right, azimuth about +-35 degrees, polar 55 to 80 degrees); slice 2.5 tunes them on the final model.~~ **Tuned 2026-11-04 (slice 2.5, D-052):** azimuth 0 to 40 degrees (the window wall hides the nook from the left), polar 55 to 80, distance 1.8 to 3.2 m, hero (25, 68, 2.6) unchanged. Section 6 and the slice 1.4 and 2.0 texts above still quote the old numbers.
 - **Palette at runtime**: the app sets contract material colors from `look.ts` by name after load (D-009), so palette changes after review need no re-export.
 
 **Resolved:**
