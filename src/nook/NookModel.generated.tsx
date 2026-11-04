@@ -49,10 +49,10 @@ export function Model(props: ThreeElements['group']) {
   return (
     <group {...props} dispose={null}>
       <group name="Scene">
-        <group name="Dust_Max" position={[0, 0.2, -0.12]} />
-        <group name="Dust_Min" position={[-0.28, 0, 0.12]} />
-        <group name="Orbit_Target" position={[0, 0.1, 0]} />
-        <group name="Rays_Origin" position={[-0.31, 0.18, 0]} />
+        <group name="Dust_Max" position={[0.3, 0.3, -0.15]} />
+        <group name="Dust_Min" position={[-0.28, -0.05, 0.2]} />
+        <group name="Orbit_Target" position={[0.14, 0, 0.12]} />
+        <group name="Rays_Origin" position={[-0.31, 0.27, 0]} />
         <group name="Rays_Target" position={[-0.1, 0, 0]} />
         <group name="Kettle" position={[0.17, 0, -0.11]}>
           <mesh name="Kettle_1" geometry={nodes.Kettle_1.geometry} material={materials.Mat_Kettle} />
@@ -72,8 +72,8 @@ export function Model(props: ThreeElements['group']) {
           <mesh name="Room_6" geometry={nodes.Room_6.geometry} material={materials.Mat_Tin} />
           <mesh name="Room_7" geometry={nodes.Room_7.geometry} material={materials.Mat_Book} />
         </group>
-        <mesh name="Window_Glass" geometry={nodes.Window_Glass.geometry} material={materials.Mat_Glass} position={[-0.31, 0.18, 0]} />
-        <mesh name="Window_Sky" geometry={nodes.Window_Sky.geometry} material={materials.Mat_Sky} position={[-0.36, 0.18, 0]} />
+        <mesh name="Window_Glass" geometry={nodes.Window_Glass.geometry} material={materials.Mat_Glass} position={[-0.31, 0.27, 0]} />
+        <mesh name="Window_Sky" geometry={nodes.Window_Sky.geometry} material={materials.Mat_Sky} position={[-0.36, 0.27, 0]} />
       </group>
     </group>
   )

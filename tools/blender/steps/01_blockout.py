@@ -9,6 +9,9 @@ Default output: tools/blender/nook.blend. Re-runnable: it resets Blender to an e
 so running it twice (or against a temporary path) gives the same file. Boxes and cylinders only;
 real shapes come in phase 2. Do not run it against nook.blend once phase 2 has started editing it.
 
+Slice 2.0 (composition, variant A "counter in the corner"): a cabinet under the worktop, a wood floor
+on a plinth, walls down to the floor, the plant on the floor. See SPEC.md section 3.
+
 Frame (SPEC.md section 5): Blender Z up, front is -Y, back wall at +Y, left wall (window) at -X,
 origin = centre of the counter top surface, meters. All sizes are the SPEC proposals (D-010).
 """
@@ -43,19 +46,27 @@ PALETTE = {
 }
 GLASS_ALPHA = 0.35  # Mat_Glass is see-through; the colour above is its base colour
 
-COUNTER_X, COUNTER_Y, COUNTER_T = 0.60, 0.45, 0.04  # footprint and thickness; top surface is z = 0
-WALL_H, WALL_T = 0.30, 0.02  # wall height above the counter top, wall thickness
+COUNTER_X, COUNTER_Y, COUNTER_T = 0.60, 0.45, 0.03  # worktop footprint and thickness; top surface is z = 0
+WALL_H, WALL_T = 0.50, 0.02  # wall height above the worktop top, wall thickness
+
+# Variant A (slice 2.0): cabinet under the worktop, floor and plinth below.
+CABINET_H = 0.30  # worktop thickness + cabinet = 0.33, so the floor top is at z = -FLOOR_Z
+FLOOR_Z = COUNTER_T + CABINET_H  # distance of the floor surface below the origin
+CABINET_INSET = 0.015  # cabinet is set back from the worktop front and right edge
+FLOOR_FRONT, FLOOR_RIGHT = 0.25, 0.30  # floor extends this far past the worktop (-Y front, +X right)
+FLOOR_T, PLINTH_T, PLINTH_OVERHANG = 0.02, 0.05, 0.02
+DOOR_GAP, DOOR_PROUD, HANDLE = 0.008, 0.008, (0.05, 0.006, 0.012)  # gap between doors, depth, handle w/d/h
 
 # Window in the left wall (-X): opening centred at y = WIN_Y, between z = WIN_Z0 and WIN_Z1.
-WIN_Y, WIN_W = 0.0, 0.22
-WIN_Z0, WIN_Z1 = 0.10, 0.26
+WIN_Y, WIN_W = 0.0, 0.36
+WIN_Z0, WIN_Z1 = 0.12, 0.42
 FRAME_W, FRAME_DEPTH = 0.015, 0.03  # frame bar width, depth across the wall (sticks out 5 mm each side)
-SKY_OFFSET, SKY_PAD = 0.05, 0.03  # sky card: metres outside the glass, extra size around the opening (stays inside the wall height)
+SKY_OFFSET, SKY_PAD = 0.05, 0.02  # sky card: metres outside the glass, extra size around the opening (stays inside the wall height)
 
 # Light patch (for the Phase 2 rays): sun travels from Rays_Origin to this point on the counter.
 RAYS_TARGET = (-0.10, 0.0, 0.0)
-DUST_MIN, DUST_MAX = (-0.28, -0.12, 0.0), (0.0, 0.12, 0.20)  # box inside the lit area
-ORBIT_TARGET = (0.0, 0.0, 0.10)  # visual centre of the diorama
+DUST_MIN, DUST_MAX = (-0.28, -0.20, -0.05), (0.30, 0.15, 0.30)  # box inside the lit area
+ORBIT_TARGET = (0.14, -0.12, 0.0)  # visual centre of the cut-away corner
 
 MUG_XY = (0.0, -0.07)
 MUG_R_BASE, MUG_R_TOP, MUG_H = 0.036, 0.040, 0.09
@@ -71,10 +82,10 @@ KETTLE_KNOB_R, KETTLE_KNOB_H = 0.012, 0.04  # total height = 0.15 + 0.01 + 0.04 
 SPOUT_TIP_X = -0.115  # spout points to -X (towards the window)
 SPOUT_TIP_Z = (0.14, 0.16)  # opening spans these z values; Steam_Kettle sits at the middle
 
-PLANT_XY = (-0.20, 0.15)
-POT_R, POT_H = 0.035, 0.05
-PLANT_CONE_R, PLANT_CONE_H = 0.05, 0.10
-TIN_XY, TIN_R, TIN_H = (-0.20, -0.13), 0.03, 0.07
+PLANT_XY = (0.46, 0.10)  # on the floor, right of the cabinet
+POT_R, POT_H = 0.05, 0.09
+PLANT_CONE_R, PLANT_CONE_H = 0.08, 0.18
+TIN_XY, TIN_R, TIN_H = (-0.20, -0.13), 0.03, 0.07  # tin and books stand on the worktop
 BOOKS_XY = (-0.01, 0.17)
 BOOKS = [  # (width x, depth y, height z, yaw in degrees) bottom to top
     (0.10, 0.07, 0.015, 0.0),
@@ -238,17 +249,49 @@ def build_room(mats):
     bm = bmesh.new()
     cx, cy = COUNTER_X / 2, COUNTER_Y / 2
     top = WALL_H
-    bottom = -COUNTER_T
+    floor_top = -FLOOR_Z
+    fx_max, fy_min = cx + FLOOR_RIGHT, -cy - FLOOR_FRONT  # floor extent to the right and to the front
 
-    box(bm, (-cx, -cy, bottom), (cx, cy, 0.0), idx["Mat_Wood"])  # counter
-    # Back wall at +Y (from x = -cx, so it meets the left wall without overlapping it).
-    box(bm, (-cx, cy, bottom), (cx, cy + WALL_T, top), idx["Mat_Wall"])
+    # Plinth and floor: two slabs of Mat_Wood, the plinth sticks out a little (reference 04).
+    box(
+        bm,
+        (-cx - WALL_T - PLINTH_OVERHANG, fy_min - PLINTH_OVERHANG, floor_top - FLOOR_T - PLINTH_T),
+        (fx_max + PLINTH_OVERHANG, cy + WALL_T + PLINTH_OVERHANG, floor_top - FLOOR_T),
+        idx["Mat_Wood"],
+    )
+    box(bm, (-cx - WALL_T, fy_min, floor_top - FLOOR_T), (fx_max, cy + WALL_T, floor_top), idx["Mat_Wood"])
+
+    # Worktop (top surface at z = 0) and the cabinet under it.
+    box(bm, (-cx, -cy, -COUNTER_T), (cx, cy, 0.0), idx["Mat_Wood"])
+    cab_hi_x, cab_lo_y = cx - CABINET_INSET, -cy + CABINET_INSET
+    box(bm, (-cx, cab_lo_y, floor_top), (cab_hi_x, cy, -COUNTER_T), idx["Mat_Frame"])
+    # Two doors on the front, proud of the cabinet, with a handle each.
+    door_w = (cab_hi_x + cx - 3 * DOOR_GAP) / 2
+    for i in range(2):
+        dx0 = -cx + DOOR_GAP + i * (door_w + DOOR_GAP)
+        box(
+            bm,
+            (dx0, cab_lo_y - DOOR_PROUD, floor_top + DOOR_GAP),
+            (dx0 + door_w, cab_lo_y, -COUNTER_T - DOOR_GAP),
+            idx["Mat_Frame"],
+        )
+        hw, hd, hh = HANDLE
+        hx = dx0 + (door_w - hw) / 2
+        box(
+            bm,
+            (hx, cab_lo_y - DOOR_PROUD - hd, -COUNTER_T - 0.07),
+            (hx + hw, cab_lo_y - DOOR_PROUD, -COUNTER_T - 0.07 + hh),
+            idx["Mat_Wood"],
+        )
+
+    # Back wall at +Y, from the left wall to the right edge of the floor, down to the floor.
+    box(bm, (-cx - WALL_T, cy, floor_top), (fx_max, cy + WALL_T, top), idx["Mat_Wall"])
     # Left wall at -X in four boxes around the window opening.
     x0, x1 = -cx - WALL_T, -cx
     wy0, wy1 = WIN_Y - WIN_W / 2, WIN_Y + WIN_W / 2
-    box(bm, (x0, -cy, bottom), (x1, wy0, top), idx["Mat_Wall"])  # front of the opening
-    box(bm, (x0, wy1, bottom), (x1, cy + WALL_T, top), idx["Mat_Wall"])  # behind the opening
-    box(bm, (x0, wy0, bottom), (x1, wy1, WIN_Z0), idx["Mat_Wall"])  # under the opening
+    box(bm, (x0, fy_min, floor_top), (x1, wy0, top), idx["Mat_Wall"])  # front of the opening
+    box(bm, (x0, wy1, floor_top), (x1, cy, top), idx["Mat_Wall"])  # behind the opening
+    box(bm, (x0, wy0, floor_top), (x1, wy1, WIN_Z0), idx["Mat_Wall"])  # under the opening
     box(bm, (x0, wy0, WIN_Z1), (x1, wy1, top), idx["Mat_Wall"])  # above the opening
     # Window frame: four bars lining the opening, a little thicker than the wall.
     fx0 = -cx - WALL_T / 2 - FRAME_DEPTH / 2
@@ -260,8 +303,8 @@ def build_room(mats):
     box(bm, (fx0, wy1 - f, WIN_Z0 + f), (fx1, wy1, WIN_Z1 - f), idx["Mat_Frame"])  # side (back)
     # Plant: pot cylinder plus leaf cone.
     px, py = PLANT_XY
-    cylinder(bm, POT_R, POT_H, (px, py, 0.0), idx["Mat_Pot"])
-    cone(bm, PLANT_CONE_R, PLANT_CONE_H, (px, py, POT_H), idx["Mat_Leaf"])
+    cylinder(bm, POT_R, POT_H, (px, py, floor_top), idx["Mat_Pot"])
+    cone(bm, PLANT_CONE_R, PLANT_CONE_H, (px, py, floor_top + POT_H), idx["Mat_Leaf"])
     # Tea tin.
     cylinder(bm, TIN_R, TIN_H, (TIN_XY[0], TIN_XY[1], 0.0), idx["Mat_Tin"])
     # Three books, stacked and turned slightly.

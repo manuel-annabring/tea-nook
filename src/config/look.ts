@@ -82,10 +82,10 @@ export const CAMERA = {
    * purpose: they are dev-only views, and the dev hook lifts the orbit limits when a preset needs it.
    */
   presets: {
-    hero: { azimuth: 25, polar: 66, distance: 1.12 },
-    front: { azimuth: 0, polar: 75, distance: 1.12 },
-    side: { azimuth: 90, polar: 75, distance: 1.12 },
-    top: { azimuth: 0, polar: 5, distance: 1.12 },
+    hero: { azimuth: 25, polar: 68, distance: 2.6 },
+    front: { azimuth: 0, polar: 75, distance: 2.6 },
+    side: { azimuth: 90, polar: 75, distance: 2.6 },
+    top: { azimuth: 0, polar: 5, distance: 2.6 },
   },
   /** Orbit limits, applied to the controls (panning is off). Angles in degrees. */
   limits: {
@@ -93,8 +93,8 @@ export const CAMERA = {
     azimuthMax: 35,
     polarMin: 55,
     polarMax: 80,
-    distanceMin: 0.8,
-    distanceMax: 1.6,
+    distanceMin: 1.5,
+    distanceMax: 3.4,
   },
 } as const satisfies { presets: Record<string, CameraPose> } & Record<string, unknown>
 

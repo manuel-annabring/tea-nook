@@ -53,6 +53,18 @@ Recommendation: plain `ShaderMaterial` for steam. Steam is unlit, transparent, n
 - **Palette:** confirmed by Manuel, kept as in the table below.
 - **Steam:** no reference needed, the Phase 1 steam is accepted.
 
+### Composition target (slice 2.0, variant A "counter in the corner")
+
+Chosen by Manuel on 2026-11-04 from three sketched variants (counter in the corner, little table by the window, tabletop slab). Draft, pending Manuel's approval in slice 2.0.
+
+- **Reading:** a cut-away corner of a small kitchen, seen from the front-right through the perspective orbit camera. It reads as a room corner with a floor, not as a block: a plinth, a wood floor, a base cabinet with a worktop, two walls, a window above the worktop.
+- **Worktop and cabinet:** the worktop keeps the section 5 footprint (0.60 x 0.45, top surface at the world origin, z = 0). A base cabinet (about 0.30 high, cream fronts with simple door panels, `Mat_Frame`) stands under it, flush with the back wall and the left wall. Worktop and floor use `Mat_Wood`.
+- **Floor and plinth:** the floor lies about 0.33 below the origin and extends the footprint forward (-Y, about 0.25) and to the right (+X, about 0.30), so the floor is about 0.90 x 0.70 in total, on a thin plinth slab (about 0.05) of `Mat_Wood`. The floor catches the window sun patch.
+- **Walls:** back wall (+Y) and left wall (-X) rise from the floor. The walls are 0.50 above the worktop (amendment of section 5, 2026-11-04) and continue down to the floor behind the cabinet. The window sits in the left wall above the worktop (sill about 0.12 above it, opening about 0.36 x 0.30), frame `Mat_Frame`, glass and sky card as in the contract.
+- **Props:** mug and kettle on the worktop as today (tea steam and kettle steam markers unchanged in meaning). Tin and books on the worktop. The plant in its pot stands on the floor to the right of the cabinet.
+- **Contract impact (to confirm in slice 2.0):** no new object or material names; footprint, origin and wall height above the origin unchanged. Moves, no renames: `Orbit_Target` (visual centre now lower and more forward), `Rays_Origin`, `Rays_Target`, `Dust_Min/Max` re-placed for the new volume. Everything below z = 0 (cabinet, floor, plinth) and the floor extension are inside `Room`. Triangle and material budgets stay well within limits (14 materials max, none added).
+- **Camera:** limits stay as in section 6 (azimuth about +-35 degrees, polar 55 to 80 degrees); hero framing and distance range are re-fitted to the taller scene.
+
 ### Images
 
 | File | Source | Take | Don't take |
@@ -126,7 +138,9 @@ The code finds and animates parts by name, so the names and rules below are fixe
 
 ### Coordinate frame
 
-Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center of the counter top surface. Front (the camera side) is Blender -Y, the back wall is at +Y, the left wall (with the window) is at -X. Units are meters. Proposed footprint: counter 0.60 (x) by 0.45 (y), walls 0.30 high, mug about 0.09 high, kettle about 0.20 high (props are exaggerated for readability).
+Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center of the counter top surface. Front (the camera side) is Blender -Y, the back wall is at +Y, the left wall (with the window) is at -X. Units are meters. Proposed footprint: counter 0.60 (x) by 0.45 (y), walls 0.50 high above the counter top, mug about 0.09 high, kettle about 0.20 high (props are exaggerated for readability).
+
+> **AMENDMENT 2026-11-04 (slice 2.0), asked for by Manuel after seeing the variant A blockout:** wall height above the counter top raised from 0.30 to 0.50 so the walls read as a room and the window can be larger. Nothing else in this section changes: names, parents, origins, markers and materials are untouched. Composition target: section 3.
 
 ### Objects
 
@@ -299,7 +313,7 @@ Scope: `tools/blender/steps/01_blockout.py`; `tools/blender/nook.blend` (created
 Out of scope: real shapes (boxes and cylinders only), `UV_AO` and the AO bake, any change to section 5, the live MCP session.
 Depends on: 1.2
 Taste-critical: yes (proportions). Criterion is "built with the proposed sizes of section 5, decision logged".
-Details: counter 0.60 x 0.45, walls 0.30 high, mug about 0.09 and kettle about 0.20 high, all from section 5. Room is one merged mesh (counter, two walls, four window-frame boxes, plant as pot cylinder plus cone, tin cylinder, three books). The kettle gets two materials (`Mat_Kettle`, `Mat_KettleDetail` on the lid knob) so the group-export rule is exercised. Material base colors come from the section 3 palette.
+Details: counter 0.60 x 0.45, walls 0.30 high (0.50 since the slice 2.0 amendment), mug about 0.09 and kettle about 0.20 high, all from section 5. Room is one merged mesh (counter, two walls, four window-frame boxes, plant as pot cylinder plus cone, tin cylinder, three books). The kettle gets two materials (`Mat_Kettle`, `Mat_KettleDetail` on the lid knob) so the group-export rule is exercised. Material base colors come from the section 3 palette.
 Acceptance criteria:
 - [ ] Base checks pass.
 - [ ] `Blender -b tools/blender/nook.blend --python tools/blender/contract_check.py` exits 0 (paste the output).
