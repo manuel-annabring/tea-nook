@@ -4,9 +4,9 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 
 ## Now
 
-- **Current phase:** Phase 1 (Pipeline, blockout, steam on the model), branch `phase/1-blockout`. Slices 1.1 and 1.2 done.
+- **Current phase:** Phase 1 (Pipeline, blockout, steam on the model), branch `phase/1-blockout`. Slices 1.1 to 1.3 done.
 - **State:** Workflow files are approved and committed on `main`. Manuel answered the open questions (all as recommended: D-010 to D-012). Phase 1 starts with Manuel's kickoff prompt (`WORKFLOW.md` section 13).
-- **Next action:** Manuel sends the kickoff prompt, ideally right after a usage-window reset. Next slice: 1.3.
+- **Next action:** Manuel sends the kickoff prompt, ideally right after a usage-window reset. Next slice: 1.4.
 - **Blockers:** none.
 
 ## Slices
@@ -19,7 +19,7 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 | 0.2 | Shader spike on a placeholder mug | n/a | done | 51a9be5 | Decisions D-001 to D-007 |
 | 1.1 | Look config and verification harness | autonomous | done | f98f751 | D-013 to D-015. Evidence: `review/phase-1/slice-1.1-hero-panel0.jpg`. Pane renders only when awake, see CLAUDE.md Commands |
 | 1.2 | Blender pipeline scripts | autonomous | done | (this commit) | D-016 to D-019. Check, export and preview verified on the factory scene (fails as intended) and on a synthetic compliant scene (passes, exports). `gen-model.mjs` verified on a throwaway GLB in a temp root (all patches matched, output typechecks and lints). Not verified: the real `nook.blend` (does not exist yet, slice 1.3) |
-| 1.3 | Scripted blockout | autonomous | todo | | |
+| 1.3 | Scripted blockout | autonomous | done | (this commit) | D-020 to D-023. Real numbers: GLB 49 KB (limit 3 MB), 724 triangles (cap 100k, target 30k), 13 materials (max 14), 13 GLB nodes; `Kettle` exports as a 2-mesh group, `Room` as 7 child meshes (about 10 draw calls for the whole model). Contract check passes on `nook.blend` and on a fresh temp build; GLB base colours equal `PALETTE` (13 of 13); `gen:model` twice gives an identical file. Evidence: `review/phase-1/blockout-{front,side,top,iso}.png`. Not verified: the GLB loading in the app (slice 1.4) |
 | 1.4 | Scene: model, lights, camera | autonomous | todo | | |
 | 1.5 | Steam on the model | autonomous | todo | | |
 | 2.1 | Mug and tea surface | collaborative | todo | | |
@@ -51,6 +51,9 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 - Plan is Pro (5-hour window, weekly limit, extra usage off). Check `get_usage` before each slice.
 
 ## Notes (ideas and out-of-scope findings, not work)
+
+- Blockout build command: `Blender -b --factory-startup --python tools/blender/steps/01_blockout.py -- [out.blend]` (default `tools/blender/nook.blend`). Not yet listed in CLAUDE.md Commands. Re-saving over an existing `nook.blend` leaves a git-ignored `nook.blend1`; delete it.
+- The exported `Room` is a group of 7 meshes (one per material, `Room_1` to `Room_7`), which the contract rule allows. For 1.4: the GLB's glTF Y/Z are swapped relative to Blender, and `Mat_Glass` carries alpha 0.35 (D-021).
 
 - `tools/gen-model.mjs` honors an optional `GEN_MODEL_ROOT` env var (another project root with `public/models/nook.glb` and `src/nook/`), only for testing the script without a GLB in the repo. Not documented in CLAUDE.md.
 - `contract_check.py` does not yet check Window_Sky size/offset versus Window_Glass or the marker sanity of `Rays_*`, `Dust_*`, `Orbit_Target` (SPEC section 5 only requires them to exist as Empties). Could be added once the blockout shows what is useful.

@@ -3,7 +3,7 @@
     /Applications/Blender.app/Contents/MacOS/Blender -b path/to/file.blend \\
         --python tools/blender/render_preview.py -- <output_dir>
 
-Writes front.png, side.png, top.png and iso.png. Cameras are framed from the bounds of all mesh
+Writes front.png, side.png, top.png and iso.png (iso: 3/4 view from the front-right). Cameras are framed from the bounds of all mesh
 objects, so it works on any scene. Blender is Z up with the front at -Y: front looks along +Y,
 side looks along -X (from the open +X side, since the left wall is at -X), top looks down.
 """
@@ -20,7 +20,7 @@ VIEWS = {
     "front": (Vector((0.0, -1.0, 0.0)), True),
     "side": (Vector((1.0, 0.0, 0.0)), True),
     "top": (Vector((0.0, -0.001, 1.0)), True),
-    "iso": (Vector((-0.6, -1.0, 0.7)), False),
+    "iso": (Vector((0.6, -1.0, 0.7)), False),  # 3/4 view from front-right, like the app camera (shows the room interior)
 }
 
 # Visible (horizontal, vertical) extents of the scene bounds for each orthographic view.
