@@ -134,7 +134,7 @@ def run_check():
                 f"tolerance {spec.STEAM_TEA_RIM_Z_TOL*1000:.0f} mm)"
             )
         if not (lo.x <= p.x <= hi.x and lo.y <= p.y <= hi.y):
-            errors.append("Steam_Tea: must be above the mug opening (outside the mug's footprint)")
+            errors.append("Steam_Tea: must be above the mug opening (inside the mug's footprint)")
     kettle, spout = ok_meshes.get("Kettle"), objs.get("Steam_Kettle")
     if kettle is not None and spout is not None:
         lo, hi = _bounds(_world_points(kettle))

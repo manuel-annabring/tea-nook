@@ -377,13 +377,24 @@ def build(out_path):
     build_window(mats)
 
     out_path = os.path.abspath(out_path)
+    if os.path.exists(out_path) and not FORCE:
+        raise SystemExit(
+            f"01_blockout: {out_path} already exists. Refusing to overwrite (phase 2 edits it live). "
+            "Pass --force after the path to overwrite on purpose."
+        )
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=out_path, compress=False)
     print(f"01_blockout: wrote {out_path}")
 
 
+FORCE = False
+
+
 def main():
+    global FORCE
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
+    FORCE = "--force" in argv
+    argv = [a for a in argv if a != "--force"]
     default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "nook.blend")
     build(argv[0] if argv else default)
 
