@@ -33,7 +33,7 @@ Cozy stylized low-poly 3D diorama of a kitchen tea nook for the web. The star is
 
 Project-specific details (added on top of the block above; the block itself is copied from WORKFLOW.md section 5):
 
-- Phases marked **collaborative** in SPEC.md (live Blender modeling) are not autonomous. They follow the "Blender MCP workflow" below with Manuel present. Autonomous phases use only headless Blender (`Blender -b`), never the live MCP session.
+- Phases marked **collaborative** in SPEC.md are not autonomous. They follow the "Blender MCP workflow" below with Manuel present. Autonomous phases use only headless Blender (`Blender -b`), never the live MCP session. Exception decided by Manuel on 2026-11-04: phase 2 slices 2.1 to 2.5 run autonomously and headless; the rules are in SPEC.md section 7, phase 2.
 - There is no git remote yet. Until Manuel adds one, "push" means nothing: commit on the phase branch and skip pushing. Never add a remote or create a GitHub repository.
 - Check plan usage with `mcp__ccd_session_mgmt__get_usage` (5-hour window "percentUsed" and "resetsAt"). Stop at a clean boundary at 80% or more (a slice can use a lot of that window, so do not start a slice you expect to run past it).
 - Each phase table in SPEC.md has a model and effort per slice. Start the slice's subagent with that model (Agent `model`) and effort (Agent `effort`).
@@ -179,7 +179,7 @@ Note: `src/shaders/` is added to the folder list Manuel gave so GLSL has a home;
 - Prefer `bpy.data` and `bmesh` over `bpy.ops`. Before any `bpy.ops` call, check the mode and set the active object and selection explicitly. `execute_blender_code` is the last resort when a dedicated MCP tool exists.
 - Contract check, export and previews run headless (`Blender -b`), not through the live session.
 - Autonomous phases never touch the live MCP session. Scripted parts (blockout, repeated parts, AO bake) are written as `tools/blender/steps/NN_<part>.py`, run headless, and followed by a contract check and previews.
-- Collaborative phases: after each part, run the contract check and previews (front, side, top), show Manuel, commit only after his OK.
+- Collaborative sessions: after each part, run the contract check and previews (front, side, top), show Manuel, commit only after his OK. In autonomous runs (phase 2, slices 2.1 to 2.5) the worker looks at the previews itself, logs the choices and commits per slice.
 - Before describing or planning Blender work, inspect the saved `.blend` headlessly (extents, vertex count, modifiers, scale) instead of judging from a screenshot. Verify menu and shortcut names against the Blender 5.2 manual bundled with the MCP server (`/Users/manuelannabring/.venvs/blender-mcp/lib/python3.13/site-packages/blmcp/data/manual`).
 - The MCP server runs arbitrary Python with no guards. Never open untrusted `.blend` files while it is connected.
 - `.mcp.json` and `*.blend1` are git-ignored. A plain `*.blend` copy (for example `nook-body-ok.blend`) is not git-ignored and must never be committed.

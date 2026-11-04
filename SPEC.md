@@ -176,6 +176,8 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
   `Mat_Wall`, `Mat_Wood`, `Mat_Frame`, `Mat_Leaf`, `Mat_Pot`, `Mat_Tin`, `Mat_Book`, `Mat_Mug`, `Mat_Tea`, `Mat_Kettle`, `Mat_KettleDetail`, `Mat_Glass`, `Mat_Sky`.
 - AO: `Room` gets a second UV layer `UV_AO` and a baked AO texture in slice 5 (amendment then). Until then only the first UV layer `UVMap` is required.
 
+> **AMENDMENT 2026-11-04 (approved in advance by Manuel for slice 2.4):** `Room` additionally requires a second UV layer `UV_AO` (non-overlapping, 0 to 1) and a baked ambient-occlusion texture `public/models/room_ao.png`, 1024 x 1024 (2048 at most), loaded by the app through `import.meta.env.BASE_URL` and applied as `aoMap` on the `Room` materials. `Mug` and `Kettle` get no AO texture and stay flat colored. The contract check verifies the UV layer; the texture size is checked by the bake script. All other rules of this section stay as they are.
+
 ### Budgets (proposed, confirm after the first export)
 
 | Item | Budget |
@@ -244,7 +246,7 @@ Overview:
 |---|---|---|---|
 | 0 | Setup and shader spike | done | steam on a placeholder mug |
 | 1 | Pipeline, blockout, steam on the model | autonomous | boxy diorama, lit, orbitable, both steams rising |
-| 2 | Real shapes and AO | collaborative (live Blender, Manuel present) | the finished-looking model |
+| 2 | Real shapes and AO | slice 2.0 collaborative (done); 2.1 to 2.5 autonomous, headless Blender (Manuel's decision 2026-11-04) | the finished-looking model |
 | 3 | Interaction, UI and release prep | autonomous | complete interaction loop, deployable build |
 | 4 | Extras: light | autonomous | window rays, dust, morning/evening toggle |
 | 5 | Extras: audio, mobile, final release | autonomous | audio, mobile tier, final write-up |
@@ -364,9 +366,15 @@ Phase 1 review ("Try this"): orbit the diorama and look at palette, light and fr
 
 ---
 
-### Phase 2: Real shapes and AO (collaborative)
+### Phase 2: Real shapes and AO (2.0 collaborative and done, 2.1 to 2.5 autonomous)
 
-Not autonomous: it uses the live Blender MCP session with Manuel present, following "Blender MCP workflow" in `CLAUDE.md`. Slices 2.0 to 2.3 are taste-critical, so the gate is Manuel's OK in the session on the preview, not a measurable criterion. Everything else below is still checked by Claude. Each slice ends with: contract check, export, `npm run gen:model`, previews, budget numbers. Claude makes the modeling edits and explains each in 2 to 3 sentences. Reference images (section 3) must be in `reference/` before slice 2.0 starts (done 2026-11-04, see section 3).
+Slice 2.0 was done together with Manuel (live review of previews). From 2.1 on Manuel decided on 2026-11-04 that the modeling runs without him and that he reviews the results at the end of the phase. Rules for 2.1 to 2.5:
+
+- **Headless only.** Each part is a re-runnable script `tools/blender/steps/0N_<part>.py` that opens `tools/blender/nook.blend`, replaces the mesh of one contract object with a real shape (`bpy.data` and `bmesh`, no deletion of contract objects, names, origins, parents and applied transforms kept) and saves it. `01_blockout.py` is never re-run on `nook.blend` again. Before each step copy `nook.blend` to `tools/blender/nook-pre-<slice>.blend1` (git-ignored). The live Blender MCP session is not used.
+- **No shape gate.** Shape and look criteria are "implemented against the references (section 3 "Take" and "Don't take" columns), decision logged in `DECISIONS.md`", not "Manuel approves". The worker looks at its own previews (front, side, top, iso and the in-app `?cam=hero` screenshot), compares them with the references, and iterates up to three times per part before accepting. Manuel judges the shapes at the phase review; changes come as small fix slices.
+- **Each slice ends with:** contract check, export, `npm run gen:model`, previews and the in-app screenshot saved to `review/phase-2/`, budget numbers, and a short "what I did in Blender and why" note (2 to 3 sentences per edit, which Blender concept) in the slice's `STATUS.md` notes, so Manuel still learns from the journal.
+- **Effort.** Slice 2.1 runs on Sonnet at medium as a test. If the coordinator finds its previews clearly weaker than the references (proportions, handle, silhouette), 2.1 is rerun once at high and the following taste slices (2.2, 2.3) start at high. Opus is not used (cost on the Pro plan; the weak point is visual judgement, not reasoning depth).
+- **Stops** are the usual four (phase complete, same problem failed twice, SPEC or contract change needed beyond the pre-approved `UV_AO` amendment below, new dependency or anything destructive). A change of marker positions is not a contract change; a rename or a new object or material name is.
 
 | Slice | Name | Model and effort |
 |---|---|---|
@@ -405,7 +413,7 @@ Acceptance criteria:
 - [ ] `Steam_Tea` sits within 5 mm of the rim center (read from the file).
 - [ ] Mug and tea disc triangle counts reported; GLB still under budget.
 - [ ] Previews and the in-app `?cam=hero` screenshot saved to `review/phase-2/`; the steam still starts at the rim.
-- [ ] Manuel approves the shape in the session (logged in `DECISIONS.md`).
+- [ ] The shape follows the references (section 3, reference 01 for the mug); the choices (proportions, handle, rim, tea level) are logged in `DECISIONS.md`.
 - [ ] Base checks pass; console clean.
 
 ### Slice 2.2: Kettle
@@ -418,7 +426,7 @@ Acceptance criteria:
 - [ ] Contract check passes (two-material group export still found by `getObjectByName('Kettle')`).
 - [ ] `Steam_Kettle` within 5 mm of the spout opening center.
 - [ ] Budgets reported; previews and hero screenshot in `review/phase-2/`.
-- [ ] Manuel approves the shape in the session.
+- [ ] The shape follows the references (section 3, reference 01 for the kettle: round body, short spout, thick handle, knob); the choices are logged in `DECISIONS.md`.
 - [ ] Base checks pass; console clean.
 
 ### Slice 2.3: Room details
@@ -432,7 +440,7 @@ Acceptance criteria:
 - [ ] `Window_Glass` faces into the room and `Rays_Target` lies on the counter surface (read from the file).
 - [ ] Triangles under the 30k target (hard cap 100k); materials at most 14.
 - [ ] Previews and screenshots from `hero`, `front`, `side` in `review/phase-2/`.
-- [ ] Manuel approves in the session.
+- [ ] The details follow the references (section 3) and the composition target; the choices are logged in `DECISIONS.md`.
 - [ ] Base checks pass; console clean.
 
 ### Slice 2.4: AO bake pipeline
@@ -441,9 +449,9 @@ Scope: `Room` mesh (`UV_AO` layer); `tools/blender/steps/05_ao_bake.py` (headles
 Out of scope: AO for `Mug` and `Kettle` (recommended: not baked, they stay flat colored), live shadows.
 Depends on: 2.3
 Taste-critical: yes
-Contract change: yes. Section 5 already announces "AO ... in slice 5 (amendment then)". The amendment adds `UV_AO` and the texture to the required list and is made in this slice with Manuel present.
+Contract change: yes, pre-approved by Manuel on 2026-11-04 (see the amendment in section 5): `UV_AO` on `Room`, texture `public/models/room_ao.png`. `contract_spec.py` and `contract.ts` get the new requirement in this slice. No other contract change is allowed.
 Acceptance criteria:
-- [ ] The amendment is written in section 5 with a dated note and Manuel's OK.
+- [ ] `contract_spec.py` and `contract.ts` require `UV_AO` on `Room` and the twin test passes; the section 5 amendment text matches what was built.
 - [ ] Contract check passes including a `UV_AO` check; AO texture 1024 x 1024 (2048 maximum), GLB under 3 MB.
 - [ ] The bake script is re-runnable headless on a temporary copy.
 - [ ] Screenshot pair in `review/phase-2/`: AO on and AO off (`aoMapIntensity` 0), corners and contact areas visibly darker with AO on.
