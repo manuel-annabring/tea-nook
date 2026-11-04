@@ -61,7 +61,7 @@ export function Model(props: ThreeElements['group']) {
         </group>
         <mesh name="Mug" geometry={nodes.Mug.geometry} material={materials.Mat_Mug} position={[0, 0, 0.07]}>
           <group name="Steam_Tea" position={[0, 0.09, 0]} />
-          <mesh name="TeaSurface" geometry={nodes.TeaSurface.geometry} material={materials.Mat_Tea} position={[0, 0.084, 0]} />
+          <mesh name="TeaSurface" geometry={nodes.TeaSurface.geometry} material={materials.Mat_Tea} position={[0, 0.082, 0]} />
         </mesh>
         <group name="Room">
           <mesh name="Room_1" geometry={nodes.Room_1.geometry} material={materials.Mat_Wall} />
