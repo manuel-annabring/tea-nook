@@ -94,9 +94,9 @@ Rules:
 
 Dev-only verification hooks (all under `import.meta.env.DEV`, stripped from production; `grep -r "__nook" dist` must print nothing). Code in `src/dev/DevHooks.tsx` and `DevPanel.tsx`, values in `src/config/look.ts`:
 
-- URL `?cam=hero|front|side|top` sets camera position and orbit target from `CAMERA.presets`. `?panel=0` hides the Leva panel. Example: `http://localhost:5173/tea-nook/?cam=hero&panel=0`.
+- URL `?cam=hero|front|side|top` sets the camera from `CAMERA.presets` (spherical, relative to the `Orbit_Target` marker; `side` and `top` lift the orbit limits). `?panel=0` hides the Leva panel. Example: `http://localhost:5173/tea-nook/?cam=hero&panel=0`.
 - `document.documentElement.dataset.nookReady === "true"` once the scene content is mounted and two frames have rendered (`data-nook-ready-ms` holds the time since navigation). Wait for it before screenshots. The built-in browser pane renders only while it is awake: if the flag stays unset, take a screenshot or any pane action and poll again, then screenshot once the flag is set (a screenshot taken straight after `navigate` can show an empty background).
-- `window.__nook`: `getCamera()` (position, target, fov), `project(name)` (screen pixels `{x, y}` of the object's bounding-box centre), `pick(x, y)` (name of the topmost non-transparent object under that pixel, or null), `stats()` (draw calls, triangles of the last frame), `worldPosition(name)`. Objects are found by name, so the placeholder mug is named `Mug` and the steam mesh `Steam`.
+- `window.__nook`: `getCamera()` (position, target, fov, azimuth/polar in degrees, distance), `getControls()`, `materialColors()`, `materialAlpha(name)`, `projectCorners(name)`, `snapshot()`, `project(name)` (screen pixels `{x, y}` of the object's bounding-box centre), `pick(x, y)` (name of the topmost non-transparent object under that pixel, or null), `stats()` (draw calls, triangles of the last frame), `worldPosition(name)`. Objects are found by name, so the placeholder mug is named `Mug` and the steam mesh `Steam`.
 
 Blender (headless, `B=/Applications/Blender.app/Contents/MacOS/Blender`, currently Blender 5.2.0 LTS; scripts in `tools/blender/`):
 

@@ -65,7 +65,7 @@ export const BUDGETS = {
 } as const
 
 /** Fails loudly if the loaded model is missing a node the code relies on. */
-export function assertModelContract(root: Object3D): void {
+export function assertContract(root: Object3D): void {
   const missing = REQUIRED_NODE_NAMES.filter((name) => !root.getObjectByName(name))
   if (missing.length > 0) {
     throw new Error(

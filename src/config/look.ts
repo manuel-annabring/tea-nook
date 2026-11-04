@@ -38,15 +38,15 @@ export interface LightPreset {
   fillIntensity: number
 }
 
-/** Light presets from SPEC section 3. Intensities and positions are placeholders until slice 1.4. `evening` is unused until 4.3. */
+/** Light presets from SPEC section 3 (`morning` is applied in slice 1.4; `evening` is unused until 4.3). */
 export const LIGHT_PRESETS = {
   morning: {
     sunColor: '#FFF1D6',
-    sunIntensity: 2,
+    sunIntensity: 2.4,
     sunPosition: [0.6, 1, 0.5],
     fillSkyColor: '#BFD8F0',
     fillGroundColor: '#F2E6D0',
-    fillIntensity: 0.7,
+    fillIntensity: 1.6,
   },
   evening: {
     sunColor: '#FF9A57',
@@ -60,33 +60,41 @@ export const LIGHT_PRESETS = {
 
 export type LightPresetName = keyof typeof LIGHT_PRESETS
 
+/** Camera pose as spherical offsets from the `Orbit_Target` marker (angles in degrees, distance in meters). */
 export interface CameraPose {
-  position: Vec3
-  target: Vec3
+  /** Horizontal angle around the target: 0 is straight in front (+Z), positive is towards the right (+X). */
+  azimuth: number
+  /** Angle from straight up: 0 is looking down from above, 90 is level with the target. */
+  polar: number
+  distance: number
 }
 
-/** Orbit target height of the placeholder mug scene; replaced by `Orbit_Target` in slice 1.4. */
-const TARGET: Vec3 = [0, 0.173, 0]
+/** Canvas and page background, behind the diorama. */
+export const BACKGROUND_COLOR = '#E9DFCB'
 
 export const CAMERA = {
   fov: 35,
   near: 0.01,
   far: 20,
-  /** Pose presets. `hero` is the default view; the others are for reproducible screenshots (`?cam=<name>` in dev). */
+  /**
+   * Pose presets, relative to the `Orbit_Target` marker (never a hard-coded position). `hero` is the default view;
+   * the others are for reproducible screenshots (`?cam=<name>` in dev). `side` and `top` lie outside `limits` on
+   * purpose: they are dev-only views, and the dev hook lifts the orbit limits when a preset needs it.
+   */
   presets: {
-    hero: { position: [0.4, 0.28, 0.6], target: TARGET },
-    front: { position: [0, 0.2, 0.9], target: TARGET },
-    side: { position: [0.9, 0.2, 0], target: TARGET },
-    top: { position: [0, 1, 0.001], target: TARGET },
+    hero: { azimuth: 25, polar: 66, distance: 1.12 },
+    front: { azimuth: 0, polar: 75, distance: 1.12 },
+    side: { azimuth: 90, polar: 75, distance: 1.12 },
+    top: { azimuth: 0, polar: 5, distance: 1.12 },
   },
-  /** Placeholders: not applied to the controls yet (slice 1.4 sets and applies them). Angles in degrees. */
+  /** Orbit limits, applied to the controls (panning is off). Angles in degrees. */
   limits: {
     azimuthMin: -35,
     azimuthMax: 35,
     polarMin: 55,
     polarMax: 80,
-    distanceMin: 0.5,
-    distanceMax: 1.5,
+    distanceMin: 0.8,
+    distanceMax: 1.6,
   },
 } as const satisfies { presets: Record<string, CameraPose> } & Record<string, unknown>
 

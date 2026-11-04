@@ -1,35 +1,20 @@
 import { OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { lazy, Suspense } from 'react'
-import { PointerProbe } from '../input/PointerProbe.tsx'
-import { Steam } from '../nook/Steam.tsx'
-import { CAMERA, LIGHT_PRESETS, PALETTE, STEAM_LOOK_DEFAULTS } from '../config/look.ts'
-import { MUG_HEIGHT, MUG_RADIUS, STEAM_HEIGHT } from './placeholder.ts'
+import { MathUtils, Vector3 } from 'three'
+import { BACKGROUND_COLOR, CAMERA, LIGHT_PRESETS } from '../config/look.ts'
+import { Nook } from '../nook/Nook.tsx'
+import { poseToPosition } from './framing.ts'
 
-// The Leva tweak panel is dev-only: the dynamic import is dropped from production builds.
-const DevSteam = import.meta.env.DEV ? lazy(() => import('../dev/DevSteam.tsx')) : null
 // Dev-only verification hooks and panel visibility (see CLAUDE.md Commands).
 const DevHooks = import.meta.env.DEV ? lazy(() => import('../dev/DevHooks.tsx')) : null
 const DevPanel = import.meta.env.DEV ? lazy(() => import('../dev/DevPanel.tsx')) : null
 
-const { hero } = CAMERA.presets
 const { morning } = LIGHT_PRESETS
-
-// Placeholder: a cylinder "mug" on a counter patch. Replaced by the Blender model in slice 1.4.
-function PlaceholderMug() {
-  return (
-    <>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.6, 0.45]} />
-        <meshStandardMaterial color={PALETTE.Mat_Wood} />
-      </mesh>
-      <mesh name="Mug" position={[0, MUG_HEIGHT / 2, 0]}>
-        <cylinderGeometry args={[MUG_RADIUS, MUG_RADIUS * 0.9, MUG_HEIGHT, 32]} />
-        <meshStandardMaterial color={PALETTE.Mat_Mug} />
-      </mesh>
-    </>
-  )
-}
+const { limits } = CAMERA
+const { degToRad } = MathUtils
+// Initial pose around the origin; `Nook` re-frames on the `Orbit_Target` marker once the model has loaded.
+const initialPosition = poseToPosition(CAMERA.presets.hero, new Vector3(), new Vector3())
 
 export default function Scene() {
   return (
@@ -39,25 +24,29 @@ export default function Scene() {
           <DevPanel />
         </Suspense>
       ) : null}
-      <Canvas dpr={[1, 2]} camera={{ position: [...hero.position], fov: CAMERA.fov, near: CAMERA.near, far: CAMERA.far }}>
-        <color attach="background" args={[PALETTE.Mat_Wall]} />
-        <ambientLight intensity={morning.fillIntensity} />
-        <directionalLight position={[...morning.sunPosition]} intensity={morning.sunIntensity} />
-        <PlaceholderMug />
-        <PointerProbe planeY={MUG_HEIGHT + STEAM_HEIGHT / 2} />
-        {DevSteam ? (
-          <Suspense fallback={null}>
-            <DevSteam />
-          </Suspense>
-        ) : (
-          <Steam position={[0, MUG_HEIGHT, 0]} look={STEAM_LOOK_DEFAULTS} />
-        )}
+      <Canvas dpr={[1, 2]} camera={{ position: initialPosition, fov: CAMERA.fov, near: CAMERA.near, far: CAMERA.far }}>
+        <color attach="background" args={[BACKGROUND_COLOR]} />
+        <hemisphereLight args={[morning.fillSkyColor, morning.fillGroundColor, morning.fillIntensity]} />
+        <directionalLight color={morning.sunColor} intensity={morning.sunIntensity} position={[...morning.sunPosition]} />
+        <Suspense fallback={null}>
+          <Nook />
+        </Suspense>
         {DevHooks ? (
           <Suspense fallback={null}>
             <DevHooks />
           </Suspense>
         ) : null}
-        <OrbitControls makeDefault enableDamping enablePan={false} target={[...hero.target]} />
+        <OrbitControls
+          makeDefault
+          enableDamping
+          enablePan={false}
+          minAzimuthAngle={degToRad(limits.azimuthMin)}
+          maxAzimuthAngle={degToRad(limits.azimuthMax)}
+          minPolarAngle={degToRad(limits.polarMin)}
+          maxPolarAngle={degToRad(limits.polarMax)}
+          minDistance={limits.distanceMin}
+          maxDistance={limits.distanceMax}
+        />
       </Canvas>
     </>
   )
