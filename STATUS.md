@@ -5,9 +5,9 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 ## Now
 
 - **Current phase:** none started. Phase 1 (Pipeline, blockout, steam on the model) is next, branch `phase/1-blockout`.
-- **State:** Workflow files are drafted and waiting for Manuel's approval, then committed on `main`. Phase 1 starts with Manuel's kickoff prompt (`WORKFLOW.md` section 13).
-- **Next action:** after approval, commit the workflow files on `main` (clean tree), then Manuel sends the kickoff prompt. First slice: 1.1.
-- **Blockers:** the three questions in SPEC section 10 ("Need Manuel's answer before phase 1 starts").
+- **State:** Workflow files are approved and committed on `main`. Manuel answered the open questions (all as recommended: D-010 to D-012). Phase 1 starts with Manuel's kickoff prompt (`WORKFLOW.md` section 13).
+- **Next action:** Manuel sends the kickoff prompt, ideally right after a usage-window reset. First slice: 1.1 (also the dry run for subagents with browser tools).
+- **Blockers:** none.
 
 ## Slices
 
