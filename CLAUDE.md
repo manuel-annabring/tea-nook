@@ -10,7 +10,7 @@ Cozy stylized low-poly 3D diorama of a kitchen tea nook for the web. The star is
 - Shape, geometry and look decisions that SPEC.md doesn't settle (steam profile, camera limits, noise curves): in a spec session or a collaborative phase, first show an interactive 2D widget (`show_widget`) built from the same maths and let Manuel pick values. Inside an autonomous phase, take your recommendation and log it in DECISIONS.md.
 - Manuel is learning Blender through this project. Claude makes the modeling edits through the MCP and explains each in 2 to 3 sentences (what, why, which Blender concept). Give a numbered walkthrough with keyboard shortcuts only when Manuel wants to do or tweak something himself. Keep it short: no coordinate tables or long value lists; exact numbers only where the contract needs them.
 - Manuel is a senior React developer but new to three.js internals, r3f, shaders and Blender. Don't explain React basics. Do explain three.js, r3f, shader or Blender concepts in 2 to 3 sentences the first time they appear.
-- Answer in English.
+- Talk to Manuel in German. Everything written to a file (code, comments, docs, commit messages) stays in English.
 - Don't add features outside the current slice. Note ideas in STATUS.md (section "Notes"), not in code.
 - Never change the model contract (SPEC.md section 5) on your own. Propose an amendment and wait.
 - Don't add dependencies without asking.

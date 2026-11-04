@@ -42,9 +42,33 @@ Recommendation: plain `ShaderMaterial` for steam. Steam is unlit, transparent, n
 
 ## 3. Visual reference
 
-`reference/` holds a mood board of cozy low-poly kitchen dioramas. **Status: images not yet provided.** Manuel adds 3 to 6 images and a line on what to take from each; this section is then filled in.
+`reference/` holds a local mood board of six images, chosen with Manuel on 2026-11-04 after two search rounds. They are third-party material: git-ignored and never committed (only `.gitkeep` is tracked). The files exist on Manuel's machine only; the sources below say where to find them again.
 
-Working palette until the references are in (flat colors, sampled again from the references later):
+### Decisions from the reference rounds
+
+- **Look:** clean flat shapes in soft colors with baked-looking AO. No hand-painted textures. Bright, friendly, tidy, minimalist, but with enough small details. Not dark, no game or fantasy look, no comic outlines, not cluttered (few plants).
+- **Realism:** the near-photorealistic kids room (image 03) is a reference for the quality of the light only. Materials stay stylized and flat, as in section 1 (no realistic PBR).
+- **Camera:** perspective "dollhouse" view: a cut-away corner seen from the front through a perspective camera with limited orbit (image 02). Not isometric or orthographic. This matches the existing orbit camera proposal (section 10).
+- **Light:** natural. A warm sun patch from the window lands on the counter and floor, shadows are soft with a cool fill, and the window is not blown out. This is the Morning preset below. Dust motes and light rays (Phase 2) as in image 02.
+- **Palette:** confirmed by Manuel, kept as in the table below.
+- **Steam:** no reference needed, the Phase 1 steam is accepted.
+
+### Images
+
+| File | Source | Take | Don't take |
+|---|---|---|---|
+| `01-morning-tea-props.webp` | [Morning Tea, jordannemari (The Rookies)](https://www.therookies.co/projects/67782) | Shapes of mug and kettle: soft, round, simple volumes with a thick handle. Sage, cream and wood palette. | Nothing in particular. |
+| `02-cozy-little-kitchen-light.webp` | [Cozy Little Kitchen (BlenderNation)](https://www.blendernation.com/2022/05/25/behind-the-scenes-cozy-little-kitchen/) | Window light as a patch on the floor, soft shadows, dust motes, bright cream mood, front dollhouse view with perspective. | Depth-of-field blur (optional). |
+| `03-kids-room-daylight.webp` | [Cozy kid's room, Marie Aufinger (ArtStation)](https://marieaufinger.artstation.com/projects/KRazDy) | Quality of natural sunlight and shadow, warm wood and colors. | Photorealism, number of objects. |
+| `04-kitchen-nook-palette.webp` | [Isometric kitchen nook (CGTrader)](https://www.cgtrader.com/3d-models/interior/kitchen/isometric-kitchen-nook) | Palette (cream wall, warm wood, sage), wood floor, corner with a window, clean flat shapes. | Chrome fridge, amount of props. |
+| `05-tidy-kitchen-clean.webp` | [Daylight kitchen (BlenderArtists)](https://blenderartists.org/t/daylight-kitchen/1411892) | Tidy, clean, enough detail, light patch from the window. | Overexposed window glow. |
+| `06-pink-room-tone.webp` | [Isometric room, ansiso (The Rookies)](https://www.therookies.co/projects/99552) | Design tone: bright, friendly, clear lines, minimalist with details. | Pink as a color world, isometric view. |
+
+Sources are the pages found by the search; the match between each image and its page was not checked against the page itself.
+
+The composition target for the corner (one paragraph) is written in slice 2.0, not here.
+
+Palette (confirmed by Manuel on 2026-11-04; flat colors, may still be tuned at runtime through `look.ts`):
 
 | Part | Color | Material |
 |---|---|---|
@@ -187,7 +211,7 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 | 2 Blockout | 1.2, 1.3, 1.4 |
 | 3 Effect on the real model | 1.5 |
 | 4 Interaction and UI | 3.1, 3.2 |
-| 5 Model detail pass | 2.1 to 2.5 |
+| 5 Model detail pass | 2.0 to 2.5 |
 | 6 Phase 1 release | 3.3, 3.4 |
 | 7a to 7e Extras | 4.1 to 4.3, 5.1, 5.2 |
 | 8 Final release | 5.3 |
@@ -328,21 +352,39 @@ Phase 1 review ("Try this"): orbit the diorama and look at palette, light and fr
 
 ### Phase 2: Real shapes and AO (collaborative)
 
-Not autonomous: it uses the live Blender MCP session with Manuel present, following "Blender MCP workflow" in `CLAUDE.md`. Slices 2.1 to 2.3 are taste-critical, so the gate is Manuel's OK in the session on the preview, not a measurable criterion. Everything else below is still checked by Claude. Each slice ends with: contract check, export, `npm run gen:model`, previews, budget numbers. Claude makes the modeling edits and explains each in 2 to 3 sentences. Reference images (section 3) should be in `reference/` before this phase starts.
+Not autonomous: it uses the live Blender MCP session with Manuel present, following "Blender MCP workflow" in `CLAUDE.md`. Slices 2.0 to 2.3 are taste-critical, so the gate is Manuel's OK in the session on the preview, not a measurable criterion. Everything else below is still checked by Claude. Each slice ends with: contract check, export, `npm run gen:model`, previews, budget numbers. Claude makes the modeling edits and explains each in 2 to 3 sentences. Reference images (section 3) must be in `reference/` before slice 2.0 starts (done 2026-11-04, see section 3).
 
 | Slice | Name | Model and effort |
 |---|---|---|
+| 2.0 | Composition: what the nook looks like | Sonnet, high |
 | 2.1 | Mug and tea surface | Sonnet, medium |
 | 2.2 | Kettle | Sonnet, medium |
 | 2.3 | Room details: window, plant, books, tin | Sonnet, medium (parametric parts scripted) |
 | 2.4 | AO bake pipeline | Sonnet, high |
 | 2.5 | Lighting, shadows decision, camera tuning | Sonnet, high |
 
+### Slice 2.0: Composition: what the nook looks like
+Goal: the overall structure of the diorama matches Manuel's target (what stands where, how the counter, walls and window read, scale) before any detail modeling starts.
+Scope: `reference/` (Manuel's images), SPEC section 3 (a short composition target and a line per image); `tools/blender/steps/01_blockout.py` and `tools/blender/nook.blend` (rebuilt from the script, still boxes and cylinders); `src/config/look.ts` (hero camera, orbit limits, `?cam=` presets, light direction if the window moves); regenerated GLB and component; `review/phase-2/`.
+Out of scope: real shapes for mug, kettle and props (slices 2.1 to 2.3), `UV_AO`, changes to the model contract other than what the composition decision needs (see below).
+Depends on: 1.5, and Manuel's reference images in `reference/`
+Taste-critical: yes
+Mode: collaborative. Claude proposes variants as previews (headless iso, front, side) and Manuel picks. No coding of variants before the composition target is written down and approved.
+Contract: the names, parents, origins and markers stay. If the composition needs different sizes (counter footprint, wall height, window opening), that is an amendment of the section 5 "proposed" sizes: written with a dated note and Manuel's OK in this slice. `nook.blend` is rebuilt with `01_blockout.py --force` only in this slice, while it still has no hand edits (D-023); after this slice the script is no longer re-run on it.
+Acceptance criteria:
+- [ ] The composition target is written in SPEC section 3 (one paragraph plus one line per reference image) and Manuel has approved it in the session (logged in `DECISIONS.md`).
+- [ ] Previews (iso, front, side, plus the in-app `?cam=hero` screenshot) of the chosen composition are saved to `review/phase-2/`; each shows counter, both walls, window, mug and kettle, and Claude states what it sees.
+- [ ] Contract check passes; any size change is written into section 5 as a dated amendment with Manuel's OK; budgets reported (GLB size, triangles, materials).
+- [ ] Both steams still start at their markers (`__nook.worldPosition` equals the mesh base within 1 cm) and `Orbit_Target` projects within 10% of the viewport centre in `?cam=hero`.
+- [ ] Hero view: the whole diorama is inside 1280 x 720 (projected bounding-box corners); orbit limits still hold (drag test from slice 1.4); no steam clipping through walls in `hero`, `front`, `side`.
+- [ ] Base checks pass; console clean.
+- [ ] Manuel approves the composition in the session.
+
 ### Slice 2.1: Mug and tea surface
 Goal: a real mug shape with a tea disc, marker moved to the real rim.
 Scope: `Mug`, `TeaSurface`, `Steam_Tea` in `nook.blend`; steps journal `02_mug.py`; regenerated GLB and component.
 Out of scope: other objects, the contract text.
-Depends on: 1.5
+Depends on: 2.0
 Taste-critical: yes
 Acceptance criteria:
 - [ ] Contract check passes; origins, parents and applied transforms unchanged (names are not changed).
@@ -606,7 +648,6 @@ Acceptance criteria:
 
 **Needed later, not blocking phase 1:**
 
-- **Reference images** (section 3 is still a stub). Needed before phase 2. Phase 1 uses the working palette. Recommendation: add 3 to 6 images with a line each before phase 2.
 - **Git remote and repo name.** There is no remote. Assumed repo name `tea-nook` (Pages URL `/tea-nook/`). Needed after phase 3 for the first deploy; phases 1 to 3 do not need it. Recommendation: you create the repo and add the remote; Claude never does.
 - **Audio source and license** (slice 5.1). Must be free to use and bundled. Recommendation: decide before phase 5.
 
@@ -623,3 +664,4 @@ Acceptance criteria:
 
 - ~~Steam geometry and noise source~~ Resolved 2026-10-27 (slice 0.2): camera-facing billboard around Y, tileable Perlin texture generated at startup (section 6).
 - ~~Dev tweak panel~~ Resolved 2026-10-27 (slice 0.2): `leva` 0.10.1, approved by Manuel, dev only.
+- ~~Reference images~~ Resolved 2026-11-04: six images chosen, notes and decisions in section 3. The images stay local and are not committed.

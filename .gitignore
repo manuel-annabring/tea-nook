@@ -36,3 +36,7 @@ __pycache__/
 
 # Local MCP server config (absolute paths on this machine)
 .mcp.json
+
+# Reference images are third-party material: kept locally, never committed
+reference/*
+!reference/.gitkeep
