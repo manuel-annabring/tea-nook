@@ -14,6 +14,10 @@ lip; three books made of covers, pages and spine.
 Run (on a copy first, then on the real file):
   Blender -b tools/blender/nook.blend --python tools/blender/steps/04_room.py -- [output.blend]
 Without an output path the opened file is saved in place.
+
+NOTE: this rebuilds the `Room` mesh and drops the second UV layer `UV_AO` (slice 2.4), so the baked
+`public/models/room_ao.png` no longer matches. If `UV_AO` exists the script refuses to run unless `--force`
+is passed after the output path; after a forced run, re-run `05_ao_bake.py` (the contract check fails until then).
 """
 
 import math
@@ -355,10 +359,17 @@ def build_books(bm):
 
 def main():
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
+    force = "--force" in argv
+    argv = [a for a in argv if a != "--force"]
     out = argv[0] if argv else None
 
     room = bpy.data.objects["Room"]
     mesh = room.data
+    if "UV_AO" in mesh.uv_layers and not force:
+        raise SystemExit(
+            "04_room: Room already has the UV layer UV_AO (slice 2.4). Rebuilding the mesh would drop it and make "
+            "public/models/room_ao.png stale. Pass --force after the output path and re-run 05_ao_bake.py afterwards."
+        )
     assert [s.material.name for s in room.material_slots] == ROOM_MATERIALS, "Room material slots changed"
     assert tuple(room.location) == (0.0, 0.0, 0.0), "Room origin is not the world origin"
 

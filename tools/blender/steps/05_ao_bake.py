@@ -21,6 +21,7 @@ Without an output path the opened file is saved in place and the PNG goes to pub
 """
 
 import os
+import shutil
 import sys
 import time
 
@@ -129,6 +130,8 @@ def bake_ao(room, scene):
     saved = {
         "engine": scene.render.engine,
         "samples": scene.cycles.samples if hasattr(scene, "cycles") else None,
+        "device": scene.cycles.device if hasattr(scene, "cycles") else None,
+        "denoising": scene.cycles.use_denoising if hasattr(scene, "cycles") else None,
         "world": scene.world,
         "hidden": {n: bpy.data.objects[n].hide_render for n in HIDE_FOR_BAKE},
         "active_render": [l.active_render for l in mesh.uv_layers],
@@ -182,6 +185,8 @@ def bake_ao(room, scene):
         scene.render.engine = saved["engine"]
         if saved["samples"] is not None:
             scene.cycles.samples = saved["samples"]
+            scene.cycles.device = saved["device"]
+            scene.cycles.use_denoising = saved["denoising"]
         mesh.uv_layers.active_index = saved["active"]
         for layer, flag in zip(mesh.uv_layers, saved["active_render"]):
             layer.active_render = flag
@@ -260,6 +265,10 @@ def main():
     if out_blend:
         bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(out_blend))
     else:
+        # Saving in place overwrites the opened file: keep a copy next to it first (*.blend1 is git-ignored).
+        backup = os.path.join(os.path.dirname(bpy.data.filepath), "nook-pre-ao.blend1")
+        shutil.copyfile(bpy.data.filepath, backup)
+        print(f"[05_ao_bake] backup of the opened file: {backup}")
         bpy.ops.wm.save_mainfile()
 
 

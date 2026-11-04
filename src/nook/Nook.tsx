@@ -48,8 +48,9 @@ export function Nook() {
     applyRoomAo(room, aoTexture, AO.intensity)
     return () => {
       detachRoomAo(room)
+      // Only free the GPU copy. The loader cache keeps the texture, so a StrictMode remount in dev finds it again
+      // instead of suspending the whole model.
       aoTexture.dispose()
-      useLoader.clear(TextureLoader, ROOM_AO_URL)
     }
   }, [aoTexture])
 

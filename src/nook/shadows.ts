@@ -14,6 +14,10 @@ export function applyShadowFlags(root: Object3D): void {
       mesh.receiveShadow = true
     })
   }
+  // TeaSurface is a child of Mug, so the loop above made it a caster too; it only receives.
   const tea = root.getObjectByName('TeaSurface') as Mesh | undefined
-  if (tea) tea.receiveShadow = true
+  if (tea) {
+    tea.castShadow = false
+    tea.receiveShadow = true
+  }
 }
