@@ -1,19 +1,23 @@
 import { useThree } from '@react-three/fiber'
 import { useLayoutEffect, useRef } from 'react'
-import type { Group } from 'three'
+import type { Group, Object3D } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CAMERA } from '../config/look.ts'
 import { frameCamera } from '../scene/framing.ts'
 import { assertContract } from './contract.ts'
 import { Model } from './NookModel.generated.tsx'
 import { applyPalette } from './palette.ts'
+import { Steam } from './Steam.tsx'
 
 /**
  * The diorama: the generated model plus behaviour. On mount it checks the model contract (dev only, throws with the
- * missing names), applies the palette, and frames the camera on the `Orbit_Target` marker once the controls exist.
+ * missing names), applies the palette, frames the camera on the `Orbit_Target` marker once the controls exist, and
+ * attaches the two steams to the `Steam_Tea` and `Steam_Kettle` markers.
  */
 export function Nook() {
   const root = useRef<Group>(null)
+  const teaMarker = useRef<Object3D>(null)
+  const kettleMarker = useRef<Object3D>(null)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as OrbitControls | null
   const framed = useRef(false)
@@ -22,6 +26,14 @@ export function Nook() {
     if (!root.current) return
     if (import.meta.env.DEV) assertContract(root.current)
     applyPalette(root.current)
+    for (const [name, ref] of [
+      ['Steam_Tea', teaMarker],
+      ['Steam_Kettle', kettleMarker],
+    ] as const) {
+      const marker = root.current.getObjectByName(name)
+      if (!marker) throw new Error(`${name} is missing from the model (SPEC.md section 5)`)
+      ref.current = marker
+    }
   }, [])
 
   useLayoutEffect(() => {
@@ -32,5 +44,11 @@ export function Nook() {
     framed.current = true
   }, [camera, controls])
 
-  return <Model ref={root} />
+  return (
+    <>
+      <Model ref={root} />
+      <Steam slot="tea" anchor={teaMarker} />
+      <Steam slot="kettle" anchor={kettleMarker} />
+    </>
+  )
 }

@@ -4,9 +4,9 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 
 ## Now
 
-- **Current phase:** Phase 1 (Pipeline, blockout, steam on the model), branch `phase/1-blockout`. Slices 1.1 to 1.4 done.
+- **Current phase:** Phase 1 (Pipeline, blockout, steam on the model), branch `phase/1-blockout`. Slices 1.1 to 1.5 done.
 - **State:** Workflow files are approved and committed on `main`. Manuel answered the open questions (all as recommended: D-010 to D-012). Phase 1 starts with Manuel's kickoff prompt (`WORKFLOW.md` section 13).
-- **Next action:** Manuel sends the kickoff prompt, ideally right after a usage-window reset. Next slice: 1.5.
+- **Next action:** Manuel sends the kickoff prompt, ideally right after a usage-window reset. Phase 1 complete: next is the phase review.
 - **Blockers:** none.
 
 ## Slices
@@ -21,7 +21,7 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 | 1.2 | Blender pipeline scripts | autonomous | done | (this commit) | D-016 to D-019. Check, export and preview verified on the factory scene (fails as intended) and on a synthetic compliant scene (passes, exports). `gen-model.mjs` verified on a throwaway GLB in a temp root (all patches matched, output typechecks and lints). Not verified: the real `nook.blend` (does not exist yet, slice 1.3) |
 | 1.3 | Scripted blockout | autonomous | done | (this commit) | D-020 to D-023. Real numbers: GLB 49 KB (limit 3 MB), 724 triangles (cap 100k, target 30k), 13 materials (max 14), 13 GLB nodes; `Kettle` exports as a 2-mesh group, `Room` as 7 child meshes (about 10 draw calls for the whole model). Contract check passes on `nook.blend` and on a fresh temp build; GLB base colours equal `PALETTE` (13 of 13); `gen:model` twice gives an identical file. Evidence: `review/phase-1/blockout-{front,side,top,iso}.png`. Not verified: the GLB loading in the app (slice 1.4) |
 | 1.4 | Scene: model, lights, camera | autonomous | done | (this commit) | D-024 to D-027. Hero view fits (scene bbox x 155..1021, y 83..702 of 1280x720; `Orbit_Target` at 640,360). Limits verified by drags and synthetic wheel events: azimuth +-35, polar 55/80, distance 0.8/1.6. Pan: `enablePan` false, synthetic right-drag left the target unchanged (the tool has no real right-drag). 14 draw calls, 726 triangles. Runtime colours equal `PALETTE` (13 of 13), `Mat_Glass` opacity 0.35 transparent. Evidence: `review/phase-1/scene-{hero,front,side}.jpg`. Console: only the THREE.Clock warning (a pointer-capture error appeared only from my synthetic pointer events). Steam, `PointerProbe` and `DevSteam` are no longer mounted (slice 1.5) |
-| 1.5 | Steam on the model | autonomous | todo | | |
+| 1.5 | Steam on the model | autonomous | done | (this commit) | D-028 to D-031. Both steams on the markers (mesh base equals marker world position exactly: tea 0, 0.09, 0.07; kettle 0.055, 0.15, -0.11). Tea uDensity 0.79 / uHeight 0.23, kettle 1.106 / 0.345. 16 draw calls, 3798 triangles. Pointer (synthetic pointer events on the canvas): uPointerBlend 0.9998 tea, 0.9999 kettle on, about 0 after leave; steam visibly pushed in the on images. Evidence: `review/phase-1/steam-{hero,front,side}.jpg`, `steam-pointer-{tea,kettle}-{on,off}.jpg` (2560 x 1440). Kettle steam runs past the top of the hero frame (height 0.345 m); looks fine but is a taste call for review |
 | 2.1 | Mug and tea surface | collaborative | todo | | |
 | 2.2 | Kettle | collaborative | todo | | |
 | 2.3 | Room details | collaborative | todo | | |

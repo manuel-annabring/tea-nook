@@ -40,3 +40,13 @@ export const STEAM_LOOK_DEFAULTS: SteamLook = {
   facing: 0.47,
   shape: STEAM_DEFAULTS,
 }
+
+/** Kettle steam relative to the tea steam (D-028): denser and taller, same noise and twist. */
+export const KETTLE_STEAM_DENSITY_FACTOR = 1.4
+export const KETTLE_STEAM_HEIGHT_FACTOR = 1.5
+
+export const KETTLE_STEAM_LOOK: SteamLook = {
+  ...STEAM_LOOK_DEFAULTS,
+  density: STEAM_LOOK_DEFAULTS.density * KETTLE_STEAM_DENSITY_FACTOR,
+  height: STEAM_LOOK_DEFAULTS.height * KETTLE_STEAM_HEIGHT_FACTOR,
+}

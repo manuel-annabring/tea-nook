@@ -9,9 +9,9 @@ export function PointerMarker() {
   useFrame(() => {
     const mesh = ref.current
     if (!mesh) return
-    const { pointerX, pointerY, pointerZ, pointerActive } = useStore.getState()
+    const { pointers, pointerActive } = useStore.getState()
     mesh.visible = pointerActive
-    mesh.position.set(pointerX, pointerY, pointerZ)
+    mesh.position.set(pointers.tea.x, pointers.tea.y, pointers.tea.z)
   })
   return (
     <mesh ref={ref} visible={false}>

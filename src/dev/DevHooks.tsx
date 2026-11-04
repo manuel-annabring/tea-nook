@@ -1,8 +1,9 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
-import { Box3, MathUtils, Raycaster, Spherical, Vector2, Vector3, type Camera, type Material, type Object3D, type Scene, type WebGLRenderer } from 'three'
+import { Box3, MathUtils, Raycaster, Spherical, Vector2, Vector3, type Camera, type Material, type Object3D, type Scene, type ShaderMaterial, type WebGLRenderer } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CAMERA, type CameraPresetName } from '../config/look.ts'
+import type { SteamUniforms } from '../nook/steamMaterial.ts'
 import { frameCamera } from '../scene/framing.ts'
 
 interface NookHooks {
@@ -28,6 +29,22 @@ interface NookHooks {
   pick: (x: number, y: number) => string | null
   stats: () => { drawCalls: number; triangles: number }
   worldPosition: (objectName: string) => { x: number; y: number; z: number } | null
+  /** Screen pixels of a world point (for example a point inside a steam column). */
+  projectPoint: (x: number, y: number, z: number) => { x: number; y: number }
+  /** Current values of a steam's uniforms (the meshes are named `SteamMesh_tea` and `SteamMesh_kettle`). */
+  uniforms: (slot: 'tea' | 'kettle') => SteamUniformValues | null
+}
+
+interface SteamUniformValues {
+  uDensity: number
+  uHeight: number
+  uPointerBlend: number
+  uPointer: [number, number, number]
+  uPhase: number
+  uColor: string
+  uWind: number
+  /** True when the material is a `ShaderMaterial` created by `createSteamMaterial` (uniform objects on userData). */
+  fromFactory: boolean
 }
 
 declare global {
@@ -177,6 +194,29 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
       if (!obj) return null
       obj.getWorldPosition(vec)
       return { x: vec.x, y: vec.y, z: vec.z }
+    },
+    projectPoint(x, y, z) {
+      const { camera, gl } = rigRef.current
+      const rect = gl.domElement.getBoundingClientRect()
+      vec.set(x, y, z).project(camera)
+      return { x: Math.round(((vec.x + 1) / 2) * rect.width + rect.left), y: Math.round(((1 - vec.y) / 2) * rect.height + rect.top) }
+    },
+    uniforms(slot) {
+      const obj = find(`SteamMesh_${slot}`)
+      const material = (obj as { material?: Material } | null | undefined)?.material
+      if (!material) return null
+      const u = (material.userData as { uniforms?: SteamUniforms }).uniforms
+      if (!u) return null
+      return {
+        uDensity: u.uDensity.value,
+        uHeight: u.uHeight.value,
+        uPointerBlend: u.uPointerBlend.value,
+        uPointer: [u.uPointer.value.x, u.uPointer.value.y, u.uPointer.value.z],
+        uPhase: u.uPhase.value,
+        uColor: u.uColor.value.getHexString(),
+        uWind: u.uWind.value,
+        fromFactory: u === (material as ShaderMaterial).uniforms,
+      }
     },
   }
 }
