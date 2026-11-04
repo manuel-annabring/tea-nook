@@ -4,9 +4,9 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 
 ## Now
 
-- **Current phase:** none started. Phase 1 (Pipeline, blockout, steam on the model) is next, branch `phase/1-blockout`.
+- **Current phase:** Phase 1 (Pipeline, blockout, steam on the model), branch `phase/1-blockout`. Slice 1.1 done.
 - **State:** Workflow files are approved and committed on `main`. Manuel answered the open questions (all as recommended: D-010 to D-012). Phase 1 starts with Manuel's kickoff prompt (`WORKFLOW.md` section 13).
-- **Next action:** Manuel sends the kickoff prompt, ideally right after a usage-window reset. First slice: 1.1 (also the dry run for subagents with browser tools).
+- **Next action:** Manuel sends the kickoff prompt, ideally right after a usage-window reset. Next slice: 1.2.
 - **Blockers:** none.
 
 ## Slices
@@ -17,7 +17,7 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 |---|---|---|---|---|---|
 | 0.1 | Setup | n/a | done | e719b7c | |
 | 0.2 | Shader spike on a placeholder mug | n/a | done | 51a9be5 | Decisions D-001 to D-007 |
-| 1.1 | Look config and verification harness | autonomous | todo | | |
+| 1.1 | Look config and verification harness | autonomous | done | (this commit) | D-013 to D-015. Evidence: `review/phase-1/slice-1.1-hero-panel0.jpg`. Pane renders only when awake, see CLAUDE.md Commands |
 | 1.2 | Blender pipeline scripts | autonomous | todo | | |
 | 1.3 | Scripted blockout | autonomous | todo | | |
 | 1.4 | Scene: model, lights, camera | autonomous | todo | | |
@@ -42,6 +42,7 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 
 - The site is served under `/tea-nook/` (also in dev). `http://localhost:5173/` alone is not the app.
 - The built-in browser pane defaults to 800 x 600. Use `resize_window` to 1280 x 720 for screenshots. A screenshot taken right after navigation can show only the background: wait for the ready flag (slice 1.1).
+- The browser pane renders pages only while awake; the `data-nook-ready` flag may stay unset until a screenshot or other pane action. Poll again, then screenshot.
 - The Leva dev panel covers the right third of the view; hide it with `?panel=0` (slice 1.1).
 - `.claude/` is git-ignored, so permission settings and `launch.json` are local only.
 - There is no git remote. Do not push.
@@ -50,6 +51,9 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 - Plan is Pro (5-hour window, weekly limit, extra usage off). Check `get_usage` before each slice.
 
 ## Notes (ideas and out-of-scope findings, not work)
+
+- `CAMERA.limits` in `look.ts` are placeholders and not applied to OrbitControls yet; slice 1.4 sets and applies them.
+- Scene lights still use the old placeholder light rig (values now from `LIGHT_PRESETS.morning`); slice 1.4 builds the real directional plus hemisphere rig.
 
 - Pointer swirl (tangential push around the cursor): idea from slice 0.2, not built.
 - CLAUDE.md "Planned pins" paragraph still says "nothing installed yet" and "Slice 0 installs exactly these". It is stale; update it when `package.json` changes next.

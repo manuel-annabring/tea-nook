@@ -38,5 +38,5 @@ export function Steam({ position, look }: SteamProps) {
   })
 
   // frustumCulled is off: the shader displaces vertices beyond the geometry's bounding box.
-  return <mesh position={position} geometry={geometry} material={material} frustumCulled={false} />
+  return <mesh name="Steam" position={position} geometry={geometry} material={material} frustumCulled={false} />
 }
