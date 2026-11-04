@@ -1,6 +1,6 @@
 # Tea Nook: Stylized 3D Tea Nook Diorama (SPEC)
 
-Status: Draft v1, 2026-10-27
+Status: Draft v2 (phase structure added 2026-11-04, pending approval)
 Owner: Manuel
 
 ## 1. Goal
@@ -66,7 +66,7 @@ What NOT to trust in references: proportions of real kitchens (we exaggerate the
 
 ## 4. Scope
 
-### Phase 1: Core (must work before anything else)
+### Core (phases 1 to 3 in section 7; must work before anything else)
 
 1. **Diorama model**: counter, two walls (back and left), window in the left wall, and 5 props (section 5). Contract-compliant GLB.
 2. **Tea steam** shader on the mug, driven from the `Steam_Tea` marker.
@@ -77,7 +77,7 @@ What NOT to trust in references: proportions of real kitchens (we exaggerate the
 7. **Scene basics**: live lights in the morning preset, baked-looking AO, loader, title, hint text.
 8. **Release**: deployed on GitHub Pages.
 
-### Phase 2: Extras (built after Phase 1 works, one slice each)
+### Extras (phases 4 and 5 in section 7; built after Core works, one slice each)
 
 - **Window light rays**: soft, noisy, additive planes from the window to the counter.
 - **Dust motes**: floating `Points` in the light, own shader.
@@ -176,28 +176,405 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 - **Hosting**: `vite.config.ts` sets `base: '/tea-nook/'`. All public asset URLs are built from `import.meta.env.BASE_URL`, never a leading `/`. Deploy workflow at `.github/workflows/deploy.yml` (build, upload Pages artifact, deploy); action versions are checked and pinned when written.
 - **Quality tiers (Phase 2, mobile)**: a single `quality` flag drives DPR cap, steam plane count and dust count. Not built in Phase 1.
 
-## 7. Build order
+## 7. Phases and slices
 
-Each slice ends with something visible, is tested, and is committed before the next. Each slice has a recommended model and effort (Opus or Sonnet high for planning and architecture, Sonnet medium for routine work, Sonnet high then Opus for tricky bugs, low for chores).
+**Terminology.** Section 4 splits the product into *Core* and *Extras*. A *phase* here is a review unit as defined in `WORKFLOW.md`: a group of slices that ends in something Manuel can try. Core is built in phases 1 to 3, Extras in phases 4 and 5. Section 4's "Phase 1" and "Phase 2" mean Core and Extras; sections 5, 6 and 10 still refer to the old slice numbers, which map like this:
 
-0. **Setup.** Vite, React, TS strict, r3f, drei, ESLint, vitest, `base` path, .gitignore, `git init`. SPEC.md and CLAUDE.md committed. Visible: a blank canvas with a spinning cube. *Sonnet medium.*
-1. **Shader spike** on a placeholder (cylinder or crossed planes above a placeholder mug cylinder). Get the steam looking right in isolation with all uniforms exposed (debug sliders via a plain dev-only panel or `leva` only if approved). Decide: `ShaderMaterial` vs `onBeforeCompile` vs drei `shaderMaterial`, steam geometry, noise source. Include a fake pointer uniform driven by the mouse. Record the decisions in section 6. *Opus or Sonnet high.*
-2. **Blockout in Blender via MCP**, contract-compliant. Adapt `contract_spec.py`, `contract_check.py`, `export_glb.py`, `render_preview.py` and `gen-model.mjs` from Typewriter. Export a rough GLB, generate the component, load it with light and orbit controls in r3f. Fix final dimensions and camera limits and amend section 5. Visible: the boxy diorama, orbitable. *Sonnet medium for the Blender journal, Opus or Sonnet high for the contract and scripts.*
-3. **Effect on the real model.** Tea steam and kettle steam attached at `Steam_Tea` and `Steam_Kettle`. Visible: both steams rising from the model. *Sonnet medium.*
-4. **Interaction and UI overlay.** Click-to-cycle tea with damped transitions, pointer-reactive steam, pointer cursor, loader, title, hints. Visible: the complete interaction loop. *Sonnet medium.*
-5. **Model detail pass.** Real shapes, materials, AO bake (`UV_AO`), environment lighting tuning, shadows decision, camera limits tuning. Amend section 5. *Sonnet medium for modeling, Sonnet high for the bake pipeline.*
-6. **Phase 1 release.** Deploy workflow, `base` verified on Pages, performance check against budgets, loading state check, short README write-up. Visible: the live URL. *Sonnet medium; low for the workflow chore.*
-7. **Phase 2 extras, one slice each, in this order:**
-   - 7a Window light rays.
-   - 7b Dust motes.
-   - 7c Time-of-day toggle (lights, sky card, rays, steam).
-   - 7d Ambient audio and mute.
-   - 7e Mobile (touch, portrait framing, quality tier).
-8. **Final release.** Full performance pass, write-up of the shader work for the portfolio, redeploy. *Sonnet medium.*
+| Old slice | New slice(s) |
+|---|---|
+| 0 Setup | 0.1 |
+| 1 Shader spike | 0.2 |
+| 2 Blockout | 1.2, 1.3, 1.4 |
+| 3 Effect on the real model | 1.5 |
+| 4 Interaction and UI | 3.1, 3.2 |
+| 5 Model detail pass | 2.1 to 2.5 |
+| 6 Phase 1 release | 3.3, 3.4 |
+| 7a to 7e Extras | 4.1 to 4.3, 5.1, 5.2 |
+| 8 Final release | 5.3 |
 
-Deviation from the original outline: the original single "Release" step is split into slice 6 (Phase 1 release) and slice 8 (final release) because Phase 1 includes deployment.
+**Conventions for all slices**
 
-## 8. Definition of done (Phase 1)
+- "Base checks" means `npm run typecheck`, `npm run lint`, `npm test` and `npm run build` all pass.
+- "Console clean" means no console errors and no warnings except the known noise listed in `CLAUDE.md` (`THREE.Clock` deprecation).
+- Screenshots are taken in the built-in browser pane at 1280 x 720 after the ready flag is set (slice 1.1), with the dev panel hidden (`?panel=0`). Evidence images are saved to `review/phase-N/` and committed.
+- Look values live in `src/config/look.ts` (slice 1.1). A slice that needs a new tweakable value adds it there.
+- Any change to section 5 (the model contract) is a stop. Slices that need one say so up front.
+
+Overview:
+
+| Phase | Name | Mode | Ends in |
+|---|---|---|---|
+| 0 | Setup and shader spike | done | steam on a placeholder mug |
+| 1 | Pipeline, blockout, steam on the model | autonomous | boxy diorama, lit, orbitable, both steams rising |
+| 2 | Real shapes and AO | collaborative (live Blender, Manuel present) | the finished-looking model |
+| 3 | Interaction, UI and release prep | autonomous | complete interaction loop, deployable build |
+| 4 | Extras: light | autonomous | window rays, dust, morning/evening toggle |
+| 5 | Extras: audio, mobile, final release | autonomous | audio, mobile tier, final write-up |
+
+Phases 4 and 5 are outlines. Claude refines them after the phase 3 review, using what was learned (`WORKFLOW.md` section 11).
+
+---
+
+### Phase 0: Setup and shader spike (done)
+
+| Slice | Name | Status |
+|---|---|---|
+| 0.1 | Setup (commit "Slice 0: project setup") | done |
+| 0.2 | Shader spike on a placeholder mug (commit "Slice 1: steam shader spike...") | done, decisions in sections 2 and 6 |
+
+---
+
+### Phase 1: Pipeline, blockout, steam on the model (autonomous)
+
+Branch `phase/1-blockout`. Look-defining first: palette, light and camera framing are visible after slice 1.4, the steam look on the real model after 1.5. Shapes stay boxy on purpose; Phase 2 replaces them.
+
+| Slice | Name | Model and effort |
+|---|---|---|
+| 1.1 | Look config and verification harness | Sonnet, medium |
+| 1.2 | Blender pipeline scripts | Sonnet, high |
+| 1.3 | Scripted blockout | Sonnet, high |
+| 1.4 | Scene: model, lights, camera | Sonnet, medium |
+| 1.5 | Steam on the model | Sonnet, medium |
+
+### Slice 1.1: Look config and verification harness
+Goal: every tweakable look value sits in one module, and dev-only hooks let Claude take reproducible screenshots and locate things on screen.
+Scope: new `src/config/look.ts`; `src/scene/Scene.tsx` and `src/dev/` (read values from the config, add the hooks); `src/nook/steamDefaults.ts` (re-exported by the config, values unchanged); `CLAUDE.md` Commands section (document the hooks).
+Out of scope: the model, Blender, the overlay UI, any new dependency, steam look changes.
+Depends on: 0.2
+Taste-critical: no
+Details: `look.ts` exports `PALETTE` (section 3 colors keyed by material name), `LIGHT_PRESETS` (`morning` and `evening` from section 3; `evening` unused until 4.3), `CAMERA` (pose presets `hero`, `front`, `side`, `top`; fov; limits as placeholders), and re-exports `TEAS` and the steam defaults. Dev-only hooks, all under `import.meta.env.DEV`: URL `?cam=<preset>` sets the camera pose; `?panel=0` hides the Leva panel; `document.documentElement.dataset.nookReady` becomes `"true"` after the first rendered frame once the scene content is mounted; `window.__nook` offers `getCamera()`, `project(objectName)` (screen pixels), `pick(x, y)` (name of the topmost object under that pixel), `stats()` (draw calls, triangles) and `worldPosition(objectName)`. The placeholder mug is named `Mug` so the hooks can be tested before the model exists.
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] `src/config/look.ts` exists; `grep -rnE '#[0-9a-fA-F]{6}' src/scene src/ui` prints no lines.
+- [ ] `?cam=hero`, `front`, `side`, `top` produce four different camera positions, each equal to its `CAMERA` preset (read with `javascript_tool` via `__nook.getCamera()`).
+- [ ] `data-nook-ready="true"` appears within 5 s of load; a screenshot taken after it shows the mug and steam (not an empty background).
+- [ ] `?panel=0` hides the Leva panel (screenshot).
+- [ ] `__nook.pick(...Object.values(__nook.project('Mug')))` returns `"Mug"`.
+- [ ] `grep -r "__nook" dist` prints nothing after `npm run build` (hooks are stripped from production).
+- [ ] `CLAUDE.md` Commands section documents the hooks.
+- [ ] Console clean.
+
+### Slice 1.2: Blender pipeline scripts
+Goal: the headless contract check, export, preview and model generation tooling exists, adapted from Typewriter, and refuses bad input.
+Scope: `tools/blender/contract_spec.py`, `contract_check.py`, `export_glb.py`, `render_preview.py`; `tools/gen-model.mjs`; the `gen:model` script in `package.json`; `src/nook/contract.ts` and `src/nook/contract.test.ts`. Sources to adapt: `~/Projects/typewriter/tools/` (read only).
+Out of scope: `nook.blend` and any model, any change to section 5, new dependencies (`gltfjsx` 6.5.3 via `npx` is already approved in `CLAUDE.md`).
+Depends on: 0.2
+Taste-critical: no
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] `contract_spec.py` encodes section 5 exactly: object names, types, parents, marker names, material names, budgets. `contract.ts` is its twin; a vitest test extracts both name lists and asserts they are equal.
+- [ ] `contract_check.py` run on Blender's factory scene (`Blender -b --python ...`) exits non-zero and prints every missing contract name (paste the output).
+- [ ] `export_glb.py` on that same scene exits non-zero and writes no `public/models/nook.glb`.
+- [ ] `render_preview.py` renders front, side and top PNGs of an arbitrary scene to a given directory without saving the `.blend`.
+- [ ] `gen-model.mjs` applies the same patches as Typewriter's (React 19, strict TS) and `npm run gen:model` exists. If `npx` cannot fetch `gltfjsx` (network), this is a stop (new network dependency), not a workaround.
+- [ ] Console clean (app unchanged).
+
+### Slice 1.3: Scripted blockout
+Goal: a contract-compliant blockout model, built by a re-runnable headless script, exported and turned into a component.
+Scope: `tools/blender/steps/01_blockout.py`; `tools/blender/nook.blend` (created by the script); `public/models/nook.glb`; `src/nook/NookModel.generated.tsx`; `review/phase-1/`.
+Out of scope: real shapes (boxes and cylinders only), `UV_AO` and the AO bake, any change to section 5, the live MCP session.
+Depends on: 1.2
+Taste-critical: yes (proportions). Criterion is "built with the proposed sizes of section 5, decision logged".
+Details: counter 0.60 x 0.45, walls 0.30 high, mug about 0.09 and kettle about 0.20 high, all from section 5. Room is one merged mesh (counter, two walls, four window-frame boxes, plant as pot cylinder plus cone, tin cylinder, three books). The kettle gets two materials (`Mat_Kettle`, `Mat_KettleDetail` on the lid knob) so the group-export rule is exercised. Material base colors come from the section 3 palette.
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] `Blender -b tools/blender/nook.blend --python tools/blender/contract_check.py` exits 0 (paste the output).
+- [ ] `export_glb.py` writes `public/models/nook.glb`: under 3 MB, under 100k triangles, at most 14 materials (report the real numbers).
+- [ ] `npm run gen:model` writes `NookModel.generated.tsx`; running it twice gives an identical file (`git diff` empty); the file is not hand-edited.
+- [ ] `01_blockout.py` run against a fresh temporary path produces a file that passes the contract check (proves it is re-runnable).
+- [ ] Preview PNGs (front, side, top) in `review/phase-1/` each show counter, both walls, window, mug and kettle; Claude looks at them and states what it sees.
+- [ ] Material base colors in the GLB equal the section 3 palette (script or `get` check, output pasted).
+- [ ] `nook.blend` was only created by the script; no `.blend` copy other than `nook.blend` is added to git.
+
+### Slice 1.4: Scene: model, lights, camera
+Goal: the app shows the blockout lit by the morning preset, framed and limited by the orbit camera.
+Scope: new `src/nook/Nook.tsx` (wrapper); contract validation helper; `src/scene/Scene.tsx` (remove the placeholder, add lights and orbit controls); `src/config/look.ts` (values); `src/dev/` hooks.
+Out of scope: steam (absent in this slice), click handling, overlay UI, shadows, AO.
+Depends on: 1.1, 1.3
+Taste-critical: yes (palette, light, framing). Criterion is "implemented with the values below, decision logged".
+Details: Lights from `LIGHT_PRESETS.morning` (one directional, one hemisphere). Camera: 3/4 view from front-right, azimuth about +-35 degrees, polar 55 to 80 degrees (the minimum stays well away from vertical because the steam billboard collapses when seen from above), distance range chosen so the whole diorama fits at 1280 x 720, no panning, target from `Orbit_Target`. Palette: the app sets the color of each contract material by name from `PALETTE` after load, so palette tweaks need no re-export (decision D-009).
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] A vitest test for a pure `assertContract(root)` helper: given a stub scene graph missing `Steam_Kettle`, it throws an error that contains `Steam_Kettle`; given a complete graph it does not throw.
+- [ ] The model URL is built from `import.meta.env.BASE_URL` (`grep -rn "nook.glb" src` shows no leading slash).
+- [ ] `?cam=hero` screenshot: the whole diorama is visible, nothing cropped (projected bounding-box corners from `__nook.project` are inside the viewport), and `Orbit_Target` projects within 10% of the viewport centre.
+- [ ] Orbit limits: after extreme drags (`left_click_drag`) in each direction, azimuth, polar angle and distance read from `__nook.getCamera()` stay inside the configured limits.
+- [ ] Panning is off: a right-button drag does not change the controls target.
+- [ ] Runtime material colors equal `PALETTE` (read with `javascript_tool`); the grep from 1.1 still prints no hex colors in `src/scene` or `src/ui`.
+- [ ] `__nook.stats()` reports fewer than 40 draw calls.
+- [ ] Screenshots `?cam=hero`, `front`, `side` saved to `review/phase-1/`.
+- [ ] Console clean.
+
+### Slice 1.5: Steam on the model
+Goal: tea steam rises from `Steam_Tea`, kettle steam from `Steam_Kettle`, both pushed by the pointer, same material class with different uniform values.
+Scope: `src/nook/Nook.tsx` (attach steam to the markers); `src/nook/Steam.tsx` (only if needed); `src/config/look.ts` (`KETTLE_STEAM_LOOK`); `src/input/PointerProbe.tsx` (plane height from the marker); `src/dev/` (panel for both steams).
+Out of scope: click handling, the tea store and cycling, new steam maths, pointer swirl.
+Depends on: 1.4
+Taste-critical: yes (kettle steam strength). Criterion is "implemented with the recommended value, decision logged". Recommended: kettle density 1.4 times and height 1.5 times the tea steam, same noise and twist.
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] Both steams are visible in the `?cam=hero` screenshot and rise from their openings (screenshot, described).
+- [ ] The steam mesh base of each steam is within 1 cm of `__nook.worldPosition('Steam_Tea')` and `('Steam_Kettle')`. `grep` finds no numeric steam positions in `src`.
+- [ ] Both steams use `createSteamMaterial`; the kettle's `uDensity` and `uHeight` are larger than the tea steam's (read via `javascript_tool`).
+- [ ] Pointer: with the mouse over the tea steam, `uPointerBlend` is above 0.5 and the steam region differs from a screenshot with the mouse outside the canvas; the same for the kettle (two screenshot pairs).
+- [ ] Screenshots from `hero`, `front` and `side` show no clipping or flat-plane artifacts. `top` is excluded (known limit, section 6).
+- [ ] No `new` expressions inside `useFrame` callbacks in `src/nook` (grep); materials, geometries and textures are disposed on unmount.
+- [ ] `__nook.stats()` reports fewer than 40 draw calls.
+- [ ] Console clean.
+
+Phase 1 review ("Try this"): orbit the diorama and look at palette, light and framing; hover the pointer through both steams; compare tea and kettle steam; open the dev panel and change a steam value; check the model preview PNGs.
+
+---
+
+### Phase 2: Real shapes and AO (collaborative)
+
+Not autonomous: it uses the live Blender MCP session with Manuel present, following "Blender MCP workflow" in `CLAUDE.md`. Slices 2.1 to 2.3 are taste-critical, so the gate is Manuel's OK in the session on the preview, not a measurable criterion. Everything else below is still checked by Claude. Each slice ends with: contract check, export, `npm run gen:model`, previews, budget numbers. Claude makes the modeling edits and explains each in 2 to 3 sentences. Reference images (section 3) should be in `reference/` before this phase starts.
+
+| Slice | Name | Model and effort |
+|---|---|---|
+| 2.1 | Mug and tea surface | Sonnet, medium |
+| 2.2 | Kettle | Sonnet, medium |
+| 2.3 | Room details: window, plant, books, tin | Sonnet, medium (parametric parts scripted) |
+| 2.4 | AO bake pipeline | Sonnet, high |
+| 2.5 | Lighting, shadows decision, camera tuning | Sonnet, high |
+
+### Slice 2.1: Mug and tea surface
+Goal: a real mug shape with a tea disc, marker moved to the real rim.
+Scope: `Mug`, `TeaSurface`, `Steam_Tea` in `nook.blend`; steps journal `02_mug.py`; regenerated GLB and component.
+Out of scope: other objects, the contract text.
+Depends on: 1.5
+Taste-critical: yes
+Acceptance criteria:
+- [ ] Contract check passes; origins, parents and applied transforms unchanged (names are not changed).
+- [ ] `Steam_Tea` sits within 5 mm of the rim center (read from the file).
+- [ ] Mug and tea disc triangle counts reported; GLB still under budget.
+- [ ] Previews and the in-app `?cam=hero` screenshot saved to `review/phase-2/`; the steam still starts at the rim.
+- [ ] Manuel approves the shape in the session (logged in `DECISIONS.md`).
+- [ ] Base checks pass; console clean.
+
+### Slice 2.2: Kettle
+Goal: a real kettle shape with spout; `Steam_Kettle` at the spout opening.
+Scope: `Kettle`, `Steam_Kettle`; journal `03_kettle.py`.
+Out of scope: other objects.
+Depends on: 2.1
+Taste-critical: yes
+Acceptance criteria:
+- [ ] Contract check passes (two-material group export still found by `getObjectByName('Kettle')`).
+- [ ] `Steam_Kettle` within 5 mm of the spout opening center.
+- [ ] Budgets reported; previews and hero screenshot in `review/phase-2/`.
+- [ ] Manuel approves the shape in the session.
+- [ ] Base checks pass; console clean.
+
+### Slice 2.3: Room details
+Goal: window with panes, plant, tin and books with real shapes, inside `Room`.
+Scope: `Room`, `Window_Glass`, `Window_Sky`, marker positions that depend on the window (`Rays_Origin`, `Rays_Target`); journals `04_room.py` (repeated parts are parametric scripts).
+Out of scope: `UV_AO` (slice 2.4).
+Depends on: 2.2
+Taste-critical: yes
+Acceptance criteria:
+- [ ] Contract check passes; `Room` is still one mesh.
+- [ ] `Window_Glass` faces into the room and `Rays_Target` lies on the counter surface (read from the file).
+- [ ] Triangles under the 30k target (hard cap 100k); materials at most 14.
+- [ ] Previews and screenshots from `hero`, `front`, `side` in `review/phase-2/`.
+- [ ] Manuel approves in the session.
+- [ ] Base checks pass; console clean.
+
+### Slice 2.4: AO bake pipeline
+Goal: `Room` carries a baked AO texture on a second UV layer, used by the app.
+Scope: `Room` mesh (`UV_AO` layer); `tools/blender/steps/05_ao_bake.py` (headless bake); `public/models/` AO texture; `src/nook/Nook.tsx` (assign `aoMap`); SPEC section 5 amendment (see below).
+Out of scope: AO for `Mug` and `Kettle` (recommended: not baked, they stay flat colored), live shadows.
+Depends on: 2.3
+Taste-critical: yes
+Contract change: yes. Section 5 already announces "AO ... in slice 5 (amendment then)". The amendment adds `UV_AO` and the texture to the required list and is made in this slice with Manuel present.
+Acceptance criteria:
+- [ ] The amendment is written in section 5 with a dated note and Manuel's OK.
+- [ ] Contract check passes including a `UV_AO` check; AO texture 1024 x 1024 (2048 maximum), GLB under 3 MB.
+- [ ] The bake script is re-runnable headless on a temporary copy.
+- [ ] Screenshot pair in `review/phase-2/`: AO on and AO off (`aoMapIntensity` 0), corners and contact areas visibly darker with AO on.
+- [ ] Base checks pass; console clean.
+
+### Slice 2.5: Lighting, shadows decision, camera tuning
+Goal: final light values, the shadow decision from section 10, final camera limits.
+Scope: `src/config/look.ts` (light, camera values), `src/scene/` (shadow setup if chosen), SPEC section 10 (record the decision).
+Out of scope: the model, time of day.
+Depends on: 2.4
+Taste-critical: yes. Criterion is "implemented with the recommended value, decision logged".
+Details: Recommendation: baked AO only, no live shadow map, unless one directional shadow (1024 map) costs less than 1 ms per frame in the measurement and clearly improves the contact shadows. Measure both with `__nook.stats()` and frame times.
+Acceptance criteria:
+- [ ] Measured numbers (draw calls, triangles, average frame time over 5 s, both variants) are in `DECISIONS.md` with the chosen option.
+- [ ] Camera limits: the orbit clamp test from slice 1.4 passes with the final values; at the extreme allowed poses no object is clipped (screenshots at the four corners of the allowed range).
+- [ ] Hero screenshot saved; the dev light values match `LIGHT_PRESETS.morning`.
+- [ ] Base checks pass; console clean.
+
+---
+
+### Phase 3: Interaction, UI and release prep (autonomous)
+
+Branch `phase/3-interaction`. Tea colors and steam transitions come first (look-defining), the overlay second, release prep last. Needs no git remote; deployment itself happens after Manuel adds one.
+
+| Slice | Name | Model and effort |
+|---|---|---|
+| 3.1 | Click to cycle tea | Sonnet, medium |
+| 3.2 | Overlay: title, hint, tea name, loader | Sonnet, medium |
+| 3.3 | Performance and budget check | Sonnet, high |
+| 3.4 | Deploy workflow and README | Sonnet, low |
+
+### Slice 3.1: Click to cycle tea
+Goal: clicking the mug advances the tea; steam color, density, speed and the tea surface color damp toward the new tea.
+Scope: `src/store/useStore.ts` (`teaIndex`, `nextTea`); `src/input/` (mug click and hover); `src/nook/Nook.tsx`, `Steam.tsx`; `src/lib/teas.ts` (values only if tuning is needed).
+Out of scope: overlay UI, audio, pointer swirl, new steam maths.
+Depends on: 2.5 (or 1.5 if Phase 2 is skipped)
+Taste-critical: yes. Criterion is "implemented with the values in `TEAS`, decision logged".
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] Clicking at `__nook.project('Mug')` increases `teaIndex` by 1; the 4th click wraps to 0 (`useStore.getState().teaIndex`, exposed under the dev hook).
+- [ ] Clicking elsewhere (the counter, empty background) does not change `teaIndex`; a drag that starts on the mug and moves more than 5 px does not count as a click.
+- [ ] After a click the steam uniforms and the `TeaSurface` material color converge to the new tea's values within 2 s without a jump (sample over time with `javascript_tool`: monotone change, no step larger than 25% of the total in one frame).
+- [ ] Hover over the mug sets `cursor: pointer` on the canvas; leaving or unmounting resets it. The mug handler calls `stopPropagation()`.
+- [ ] No component subscribes to pointer fields; no `setState` and no allocations in `useFrame` (grep).
+- [ ] Four screenshots, one per tea, in `review/phase-3/`.
+- [ ] Console clean.
+
+### Slice 3.2: Overlay: title, hint, tea name, loader
+Goal: the HTML overlay from section 6.
+Scope: `src/ui/`, `src/App.tsx`, `src/index.css`.
+Out of scope: Phase 4 and 5 buttons, web fonts, new dependencies.
+Depends on: 3.1
+Taste-critical: yes (type and placement). Criterion is "implemented with the recommended values: system font stack, as in section 6, decision logged".
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] Title "Tea Nook" top-left and hint "Drag to orbit · Click the mug to change tea" bottom-center are legible at 1280 x 720 (screenshot; computed contrast ratio at least 4.5 : 1 measured with `javascript_tool`).
+- [ ] After a click, the tea name appears bottom-center and fades out (opacity read at 0 s, 0.5 s and 3 s).
+- [ ] The overlay has `pointer-events: none` except on buttons; orbit drag works over the title area.
+- [ ] The loader shows a progress bar during load (throttled to slow 3G through `javascript_tool` or a delayed GLB response in a screenshot) and is gone when `data-nook-ready` is set.
+- [ ] `grep` finds no remote URLs in `index.html`, `src/ui` or CSS.
+- [ ] Console clean.
+
+### Slice 3.3: Performance and budget check
+Goal: measure against the budgets and fix cheap violations.
+Scope: `src/dev/` (a stats readout), measurement notes in `STATUS.md`, fixes inside existing files.
+Out of scope: new features, quality tiers (Phase 5), changing budgets.
+Depends on: 3.2
+Taste-critical: no
+Acceptance criteria:
+- [ ] Table in `STATUS.md`: triangles, GLB size, materials, draw calls, and average frame time over 10 s in the production build (`npm run preview`) at 1280 x 720, each against its section 5 budget.
+- [ ] Draw calls under 40; triangles under 100k; GLB under 3 MB; materials at most 14. A violation that needs a budget change is a stop.
+- [ ] The measured frame time and the machine are recorded. The pane's frame rate is only a proxy; the 60 fps and 4x throttle check on Manuel's laptop is listed in the review.
+- [ ] Base checks pass; console clean.
+
+### Slice 3.4: Deploy workflow and README
+Goal: a Pages deploy workflow that works as soon as a remote exists, and a short README.
+Scope: `.github/workflows/deploy.yml`, `README.md`.
+Out of scope: creating the repo or a remote, pushing, changing `base`.
+Depends on: 3.3
+Taste-critical: no
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] `deploy.yml` parses as YAML (`python3 -I -c "import yaml..."` or equivalent), runs install, build, uploads the Pages artifact and deploys; every action is pinned to a version that exists (checked against the action's releases when written, source noted in `DECISIONS.md`).
+- [ ] `npm run build && npm run preview`: loading `/tea-nook/` fetches the GLB, texture and JS under `/tea-nook/` with no 404 (network log pasted).
+- [ ] README has what it is, how to run, the stack, the model pipeline in 5 lines. No claims that were not verified.
+- [ ] Console clean.
+
+Phase 3 review ("Try this"): click through all four teas; hover and drag the mug; reload with a slow network to see the loader; run `npm run preview`; on your laptop check fps and the 4x CPU throttle; then add a remote and push.
+
+---
+
+### Phase 4: Extras: light (outline, refine after phase 3)
+
+| Slice | Name | Model and effort |
+|---|---|---|
+| 4.1 | Window light rays | Sonnet, high |
+| 4.2 | Dust motes | Sonnet, medium |
+| 4.3 | Time-of-day toggle | Sonnet, high |
+
+### Slice 4.1: Window light rays
+Goal: soft, noisy, additive planes from `Rays_Origin` toward `Rays_Target`, sized from `Window_Glass` bounds.
+Scope: `src/nook/Rays.tsx`, `src/shaders/rays.*`, `src/lib/` twin for any CPU maths, `src/config/look.ts`.
+Out of scope: time of day, dust.
+Depends on: 3.2
+Taste-critical: yes (recommended values, decision logged)
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] Ray direction equals `Rays_Target - Rays_Origin` (unit test of the pure function).
+- [ ] Rays do not write depth; screenshot from `hero` shows rays from the window to the counter; screenshot from `side` shows no hard plane edges.
+- [ ] Uniforms are on `material.userData` and mutated, not replaced (grep).
+- [ ] Draw calls still under 40; console clean.
+
+### Slice 4.2: Dust motes
+Goal: `Points` floating inside the box `Dust_Min` to `Dust_Max`, own shader, brighter inside the ray area.
+Scope: `src/nook/Dust.tsx`, `src/shaders/dust.*`, `src/config/look.ts`.
+Out of scope: audio, mobile quality tier.
+Depends on: 4.1
+Taste-critical: yes (recommended values, decision logged)
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] Every mote stays inside the `Dust_Min`/`Dust_Max` box over 60 s of simulated time (unit test of the position function).
+- [ ] Count is a single constant in `look.ts`; one draw call.
+- [ ] Screenshot from `hero` shows motes; console clean.
+
+### Slice 4.3: Time-of-day toggle
+Goal: a morning/evening toggle that damps light colors, sky card, ray strength and steam tint to the active preset.
+Scope: `src/store/useStore.ts` (`timeOfDay`), `src/lib/timeOfDay.ts`, `src/ui/` (toggle top-right), `src/config/look.ts`.
+Out of scope: audio, mobile.
+Depends on: 4.2
+Taste-critical: yes (evening look; recommended values from section 3, decision logged)
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] Clicking the toggle switches `timeOfDay`; live light colors converge to the preset within 2 s without a jump.
+- [ ] `Window_Sky` color changes; rays and steam tint change (values read from uniforms).
+- [ ] Morning and evening `hero` screenshots saved to `review/phase-4/`.
+- [ ] Console clean.
+
+---
+
+### Phase 5: Extras: audio, mobile, final release (outline, refine after phase 4)
+
+| Slice | Name | Model and effort |
+|---|---|---|
+| 5.1 | Ambient audio and mute | Sonnet, medium |
+| 5.2 | Mobile support | Sonnet, high |
+| 5.3 | Final performance pass and write-up | Sonnet, medium |
+
+### Slice 5.1: Ambient audio and mute
+Goal: a bundled audio loop that starts only after the first user interaction, with a mute button.
+Scope: `src/audio/`, `src/store/useStore.ts` (`muted`), `src/ui/`, `public/` audio file.
+Out of scope: more sound effects.
+Depends on: 3.2
+Taste-critical: yes (recommended: a short bundled loop, decision logged)
+Needs input first: audio source and license (section 10); a stop if it is still open when the slice starts.
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] No `AudioContext` is created or resumed before the first pointer or key event (checked by instrumenting the constructor before load).
+- [ ] The mute button toggles `muted`; the gain reaches 0 within 0.3 s.
+- [ ] The audio file license is recorded in `DECISIONS.md`; no remote audio URLs.
+- [ ] Console clean.
+
+### Slice 5.2: Mobile support
+Goal: touch controls, portrait framing and a reduced quality tier.
+Scope: `src/config/look.ts` (quality tiers), `src/scene/`, `src/ui/`.
+Out of scope: native apps.
+Depends on: 4.3
+Taste-critical: no
+Acceptance criteria:
+- [ ] Base checks pass.
+- [ ] At 390 x 844 (`resize_window` mobile) the whole diorama is visible in a screenshot; the overlay text does not overlap the model.
+- [ ] A single `quality` flag drives the DPR cap, steam plane count and dust count (grep shows no other switches).
+- [ ] Touch orbit works (emulated touch drag changes the camera).
+- [ ] Desktop screenshots are unchanged from phase 4 (pixel diff under 1%).
+- [ ] Console clean.
+
+### Slice 5.3: Final performance pass and write-up
+Goal: final measurements, portfolio write-up of the shader work, redeploy.
+Scope: README, `STATUS.md`, measurement notes.
+Out of scope: new features.
+Depends on: 5.2
+Taste-critical: no
+Acceptance criteria:
+- [ ] Base checks pass; the budget table from 3.3 is repeated and within budget.
+- [ ] README shader write-up covers uniforms, noise, twist, pointer push and the decisions from section 2 and 6.
+- [ ] Console clean.
+
+## 8. Definition of done (Core, end of phase 3)
 
 - The live GitHub Pages URL loads with no console errors or warnings (known noise from dependencies is listed in `CLAUDE.md`).
 - Contract check passes; GLB under 3 MB, under 100k triangles (target 30k), at most 14 materials.
@@ -212,7 +589,7 @@ Deviation from the original outline: the original single "Release" step is split
 ## 9. How the agent verifies its work
 
 1. `npm run typecheck`, `npm run lint`, `npm test` and `npm run build` pass.
-2. Open the dev server in the browser, take a screenshot, read the console. No errors or new warnings.
+2. Open the dev server in the built-in browser at 1280 x 720, wait for `data-nook-ready`, take a screenshot (use `?cam=<preset>&panel=0`, see slice 1.1), read the console. No errors or new warnings.
 3. Test the slice by hand (orbit, hover, click, resize).
 4. Shader slices: check from at least 3 camera angles and with the pointer inside and outside the steam.
 5. Model slices: headless contract check passes, headless preview renders (front, side, top) are looked at, the GLB loads in the app, triangle count and file size are compared with the budgets.
@@ -221,13 +598,28 @@ Deviation from the original outline: the original single "Release" step is split
 
 ## 10. Open questions
 
-- **Reference images** are not in `reference/` yet (section 3 is a stub).
-- **AO bake**: single AO texture on `Room` only, or also for `Mug` and `Kettle` (or vertex colors for those)? Decided in slice 5.
-- **Shadows**: baked-only contact shading, or one live shadow-casting directional light with a small map? Decided in slice 5 after measuring cost.
-- ~~**Steam geometry and noise source**~~ Resolved 2026-10-27 (slice 1): camera-facing billboard around Y, tileable Perlin texture generated at startup (see section 6).
-- ~~**Dev tweak panel**~~ Resolved 2026-10-27 (slice 1): `leva` 0.10.1, approved by Manuel, dev only.
-- **Pointer swirl** (idea from slice 1, not built): add a tangential component to the pointer push so the steam curls around the cursor instead of only moving away. Decide in slice 4 once it is on the real model.
-- **Repo name**: assumed `tea-nook` (Pages URL `/tea-nook/`). Confirm before slice 6, or change `base` if different.
-- **Typography**: system font stack for Phase 1, or one bundled web font? Proposed: system stack in Phase 1.
-- **Audio source and license** (Phase 2): TBD; must be free to use and bundled.
-- **Camera defaults and limits**: proposed in slice 2 (3/4 view from front-right, azimuth about +-35 degrees, polar about 55 to 80 degrees, distance range tuned on the model).
+**Need Manuel's answer before phase 1 starts** (each with a recommendation; if you say "all as recommended", they become decisions D-010 to D-012):
+
+1. **Section 5 sizes and budgets.** The sizes ("proposals") and budgets ("proposed, confirm after the first export") are not final. Slice 1.3 builds the blockout with them unchanged. Recommendation: accept them as the working values; if the blockout shows a problem, the fix is an amendment in phase 2, made with you present. Without an answer, any needed change in phase 1 is a stop.
+2. **Phase order.** Recommended: phase 1 (autonomous), then you review and we do phase 2 (live Blender, you present) in the same sitting, then phase 3 runs while you are away. Alternative: phase 3 before phase 2, which gets interaction early but builds it on boxes.
+3. **Usage window.** The plan is Pro: a 5-hour window and a weekly limit, extra usage off. Phase 1 has five slices with subagents and screenshots and will probably not fit one window. Recommendation: start phase 1 right after a window reset, accept the pause-and-resume behavior (`WORKFLOW.md` section 10), keep extra usage off.
+
+**Needed later, not blocking phase 1:**
+
+- **Reference images** (section 3 is still a stub). Needed before phase 2. Phase 1 uses the working palette. Recommendation: add 3 to 6 images with a line each before phase 2.
+- **Git remote and repo name.** There is no remote. Assumed repo name `tea-nook` (Pages URL `/tea-nook/`). Needed after phase 3 for the first deploy; phases 1 to 3 do not need it. Recommendation: you create the repo and add the remote; Claude never does.
+- **Audio source and license** (slice 5.1). Must be free to use and bundled. Recommendation: decide before phase 5.
+
+**Settled by recommendation** (veto any of them now, otherwise they are decisions):
+
+- **AO bake scope** (slice 2.4): `Room` only; `Mug` and `Kettle` stay flat colored.
+- **Shadows** (slice 2.5): baked AO only, unless one live shadow costs under 1 ms per frame and clearly improves contact shadows. Decided there from measurements.
+- **Typography** (slice 3.2): system font stack, no web font.
+- **Pointer swirl** (idea from slice 0.2): not built. Noted in `STATUS.md`; it can become a slice after the phase 3 review.
+- **Camera defaults and limits**: slice 1.4 uses the proposal (3/4 view from front-right, azimuth about +-35 degrees, polar 55 to 80 degrees); slice 2.5 tunes them on the final model.
+- **Palette at runtime**: the app sets contract material colors from `look.ts` by name after load (D-009), so palette changes after review need no re-export.
+
+**Resolved:**
+
+- ~~Steam geometry and noise source~~ Resolved 2026-10-27 (slice 0.2): camera-facing billboard around Y, tileable Perlin texture generated at startup (section 6).
+- ~~Dev tweak panel~~ Resolved 2026-10-27 (slice 0.2): `leva` 0.10.1, approved by Manuel, dev only.

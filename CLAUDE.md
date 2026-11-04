@@ -6,24 +6,47 @@ Cozy stylized low-poly 3D diorama of a kitchen tea nook for the web. The star is
 
 ## How we work
 
-- Follow the build order in SPEC.md section 7. One slice per session. Phase 1 before Phase 2.
-- For anything touching more than about 3 files, propose a short plan first and wait for approval.
-- Commit after every working slice with a clear message.
-- Before committing, show the diff summary and `git status`, then wait for Manuel's OK. Then commit (push only when asked).
-- For shape or geometry decisions (steam profile, swirl, camera limits, noise curves), first show an interactive 2D widget (`show_widget`) built from the same maths, let Manuel pick values, then implement step by step and pause after each step with a browser check.
+- We work in phases, see "Autonomy rules (phase mode)" below. `WORKFLOW.md` describes the process, `STATUS.md` is the current state: read it first in every session, then `DECISIONS.md`.
+- Shape, geometry and look decisions that SPEC.md doesn't settle (steam profile, camera limits, noise curves): in a spec session or a collaborative phase, first show an interactive 2D widget (`show_widget`) built from the same maths and let Manuel pick values. Inside an autonomous phase, take your recommendation and log it in DECISIONS.md.
 - Manuel is learning Blender through this project. Claude makes the modeling edits through the MCP and explains each in 2 to 3 sentences (what, why, which Blender concept). Give a numbered walkthrough with keyboard shortcuts only when Manuel wants to do or tweak something himself. Keep it short: no coordinate tables or long value lists; exact numbers only where the contract needs them.
 - Manuel is a senior React developer but new to three.js internals, r3f, shaders and Blender. Don't explain React basics. Do explain three.js, r3f, shader or Blender concepts in 2 to 3 sentences the first time they appear.
 - Answer in English.
-- Don't add features outside the current slice. Note ideas in your reply instead.
+- Don't add features outside the current slice. Note ideas in STATUS.md (section "Notes"), not in code.
 - Never change the model contract (SPEC.md section 5) on your own. Propose an amendment and wait.
 - Don't add dependencies without asking.
-- If you said you would ask before a deviation, ask. Flag any deviation prominently in the reply.
+- A deviation from SPEC.md or CLAUDE.md is never silent. In a collaborative session, flag it prominently in the reply. In phase mode, a needed SPEC or contract change is a stop condition (below); any smaller deviation is logged in DECISIONS.md and listed in STATUS.md.
+
+## Autonomy rules (phase mode)
+
+- Work phase by phase, not slice by slice. Follow SPEC.md. Manuel reviews at the end of each phase.
+- No approval is needed for plans, commits or pushes inside a phase. Work on branch `phase/N-name`, one commit per slice.
+- Decide open questions yourself using your recommendation. Log every non-trivial decision in DECISIONS.md with the alternative, the reason, and an impact tag (easy-to-change or foundation).
+- Delegate each slice to a fresh-context subagent with a complete brief. The subagent verifies its slice, commits, updates STATUS.md and DECISIONS.md, and returns a short report. Subagents can't ask Manuel: they log decisions and report blockers.
+- Stop and wait (and send a notification) only when:
+  1. the phase is complete,
+  2. the same problem failed twice,
+  3. a slice's acceptance criteria can't be met without a SPEC or contract change,
+  4. a new dependency, or anything destructive or hard to undo, would be needed.
+- Before every slice, check plan usage. If the 5-hour window is nearly full, stop at a clean boundary, notify Manuel with the reset time, and resume after the reset.
+- At the end of a phase: run a fresh-context reviewer, write REVIEW-phase-N.md, notify Manuel. Do not start the next phase.
+- Everything outside a phase's slices is a note in STATUS.md, not work.
+
+Project-specific details (added on top of the block above; the block itself is copied from WORKFLOW.md section 5):
+
+- Phases marked **collaborative** in SPEC.md (live Blender modeling) are not autonomous. They follow the "Blender MCP workflow" below with Manuel present. Autonomous phases use only headless Blender (`Blender -b`), never the live MCP session.
+- There is no git remote yet. Until Manuel adds one, "push" means nothing: commit on the phase branch and skip pushing. Never add a remote or create a GitHub repository.
+- Check plan usage with `mcp__ccd_session_mgmt__get_usage` (5-hour window "percentUsed" and "resetsAt"). Stop at a clean boundary at 80% or more (a slice can use a lot of that window, so do not start a slice you expect to run past it).
+- Each phase table in SPEC.md has a model and effort per slice. Start the slice's subagent with that model (Agent `model`) and effort (Agent `effort`).
+- Every worker brief points to "Code rules", "Shader rules" and "Blender and model rules" in this file, and lists the SPEC.md acceptance criteria verbatim.
+- Evidence rule: a slice is accepted only with command output or a screenshot per criterion. Screenshots are taken in the built-in browser pane at 1280 x 720 (`resize_window`) after the `data-nook-ready` flag is set (see SPEC.md slice 1.1).
+- Notification (`PushNotification`) only at the four stop conditions, one line, leading with what Manuel must do.
+- Keep tweakable look values (palette, light presets, camera defaults, tea values, steam defaults) in `src/config/look.ts` and the files it re-exports, never inline in components.
 
 ## Model and effort
 
-Manuel chooses model and effort at the start of each session. You can't change them, but you can recommend. Default setup: Sonnet 5.5 at medium effort.
+Manuel chooses model and effort for collaborative and spec sessions. You can't change your own, but you can recommend. In phase mode the coordinator sets model and effort per subagent from the SPEC.md phase table. Default setup: Sonnet 5.5 at medium effort.
 
-- When you propose a slice plan, add one line recommending model and effort for that slice.
+- When you propose a slice plan in a collaborative session, add one line recommending model and effort for that slice.
 - Planning and architecture (shader approach, store design, contract changes): Opus, or Sonnet at high effort.
 - Routine implementation (UI overlay, glue code, model wrapper): Sonnet, medium.
 - Tricky bugs (shader artifacts, transforms and pivots, program caching, GLB export issues): Sonnet at high effort first, Opus if still stuck.
@@ -82,9 +105,15 @@ Known noise (expected until r3f is updated): the build warns that the main chunk
 ## Folder structure
 
 ```
+WORKFLOW.md         the phase workflow (process, templates)
+STATUS.md           current phase, slice table, next action, blockers, notes
+DECISIONS.md        decision log
+REVIEW-phase-N.md   review package per phase (written by Claude at phase end)
+review/phase-N/     evidence screenshots and previews for the review package (committed PNGs)
 reference/          mood board images (not shipped)
 public/models/      nook.glb
 src/
+  config/           look.ts: every tweakable look value in one place (palette, light presets, camera, teas, steam defaults)
   scene/            Canvas, lights, camera and orbit limits, environment
   nook/             Nook.tsx (wrapper, behavior), contract.ts (required node names),
                     NookModel.generated.tsx (generated, never hand-edit),
@@ -143,12 +172,15 @@ Note: `src/shaders/` is added to the folder list Manuel gave so GLSL has a home;
 - Repeated parts (books, window panes, plant leaves) are generated by parametric scripts. Organic shapes (mug, kettle, plant) are modeled live with Manuel's taste deciding.
 - Prefer `bpy.data` and `bmesh` over `bpy.ops`. Before any `bpy.ops` call, check the mode and set the active object and selection explicitly. `execute_blender_code` is the last resort when a dedicated MCP tool exists.
 - Contract check, export and previews run headless (`Blender -b`), not through the live session.
-- After each part: contract check, preview (front, side, top), show Manuel, commit only after his OK.
+- Autonomous phases never touch the live MCP session. Scripted parts (blockout, repeated parts, AO bake) are written as `tools/blender/steps/NN_<part>.py`, run headless, and followed by a contract check and previews.
+- Collaborative phases: after each part, run the contract check and previews (front, side, top), show Manuel, commit only after his OK.
 - Before describing or planning Blender work, inspect the saved `.blend` headlessly (extents, vertex count, modifiers, scale) instead of judging from a screenshot. Verify menu and shortcut names against the Blender 5.2 manual bundled with the MCP server (`/Users/manuelannabring/.venvs/blender-mcp/lib/python3.13/site-packages/blmcp/data/manual`).
 - The MCP server runs arbitrary Python with no guards. Never open untrusted `.blend` files while it is connected.
 - `.mcp.json` and `*.blend1` are git-ignored. A plain `*.blend` copy (for example `nook-body-ok.blend`) is not git-ignored and must never be committed.
 
 ## Verify before saying "done"
+
+Check every acceptance criterion of the slice in SPEC.md and keep the evidence (command output, screenshot). Then:
 
 1. `npm run typecheck`, `npm run lint` and `npm run build` pass (and `npm test` once tests exist).
 2. Look at the result in the browser (screenshot) and read the console. No errors or new warnings.
