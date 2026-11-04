@@ -52,8 +52,14 @@ GLB_MAX_MB = 3
 MAX_MATERIALS = 14
 ORIGIN_TOL_MM = 1
 
-# Only the first UV layer is required until the AO amendment adds UV_AO.
+# Room UV layers (SPEC.md section 5, AO amendment of 2026-11-04): `UVMap` first (placeholder box projection),
+# `UV_AO` second (non-overlapping 0..1 layout the baked AO texture is mapped with, exported as TEXCOORD_1).
 ROOM_UV_LAYER = "UVMap"
+ROOM_UV_AO_LAYER = "UV_AO"
+# Baked AO texture of Room, in public/models/ (size in pixels, square; the bake script checks it).
+AO_TEXTURE_FILE = "room_ao.png"
+AO_TEXTURE_SIZE = 1024
+AO_TEXTURE_MAX_SIZE = 2048
 
 # Marker plausibility (implementation choices for the "near the rim" / "near the spout side"
 # wording of SPEC.md section 5; logged in DECISIONS.md). Meters / fractions.

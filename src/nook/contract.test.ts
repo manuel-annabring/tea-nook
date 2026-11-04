@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import specSource from '../../tools/blender/contract_spec.py?raw'
-import { BUDGETS, CONTRACT_OBJECTS, MARKER_NAMES, MATERIAL_NAMES, REQUIRED_NODE_NAMES } from './contract.ts'
+import {
+  AO_TEXTURE,
+  BUDGETS,
+  CONTRACT_OBJECTS,
+  MARKER_NAMES,
+  MATERIAL_NAMES,
+  REQUIRED_NODE_NAMES,
+  ROOM_UV_AO_LAYER,
+  ROOM_UV_LAYER,
+} from './contract.ts'
 
 // contract_spec.py is the Blender-side copy of the contract. These tests parse it as text
 // (no Python needed) so the two copies cannot drift apart silently.
@@ -16,6 +25,12 @@ function pyNumber(name: string): number {
   const match = new RegExp(`^${name} = ([\\d_]+)\\s*$`, 'm').exec(specSource)
   if (!match?.[1]) throw new Error(`contract_spec.py: number ${name} not found`)
   return Number(match[1].replaceAll('_', ''))
+}
+
+function pyString(name: string): string {
+  const match = new RegExp(`^${name} = "([^"]+)"\\s*$`, 'm').exec(specSource)
+  if (!match?.[1]) throw new Error(`contract_spec.py: string ${name} not found`)
+  return match[1]
 }
 
 const pyObjects = [...listBlock('OBJECTS').matchAll(/\("(\w+)", "(MESH|EMPTY)", (?:"(\w+)"|None)\)/g)].map((m) => ({
@@ -50,6 +65,15 @@ describe('model contract twin (contract.ts vs tools/blender/contract_spec.py)', 
     expect(pyNumber('GLB_MAX_MB')).toBe(BUDGETS.glbMaxMb)
     expect(pyNumber('MAX_MATERIALS')).toBe(BUDGETS.maxMaterials)
     expect(pyNumber('ORIGIN_TOL_MM')).toBe(BUDGETS.originToleranceMm)
+  })
+
+  it('requires the same Room UV layers and AO texture', () => {
+    expect(pyString('ROOM_UV_LAYER')).toBe(ROOM_UV_LAYER)
+    expect(pyString('ROOM_UV_AO_LAYER')).toBe(ROOM_UV_AO_LAYER)
+    expect(ROOM_UV_AO_LAYER).toBe('UV_AO')
+    expect(pyString('AO_TEXTURE_FILE')).toBe(AO_TEXTURE.file)
+    expect(pyNumber('AO_TEXTURE_SIZE')).toBe(AO_TEXTURE.size)
+    expect(pyNumber('AO_TEXTURE_MAX_SIZE')).toBe(AO_TEXTURE.maxSize)
   })
 
   it('matches SPEC.md section 5 structurally', () => {

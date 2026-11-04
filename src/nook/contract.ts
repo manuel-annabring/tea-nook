@@ -55,6 +55,17 @@ export const MATERIAL_NAMES = [
 
 export type MaterialName = (typeof MATERIAL_NAMES)[number]
 
+/** `Room` UV layers (SPEC.md section 5, AO amendment): the placeholder first, the baked-AO layout second (glTF TEXCOORD_1). */
+export const ROOM_UV_LAYER = 'UVMap'
+export const ROOM_UV_AO_LAYER = 'UV_AO'
+
+/** Baked AO texture of `Room` (file in `public/models/`, size in pixels, square). */
+export const AO_TEXTURE = {
+  file: 'room_ao.png',
+  size: 1024,
+  maxSize: 2048,
+} as const
+
 /** Budgets (SPEC.md section 5). */
 export const BUDGETS = {
   triangleTarget: 30000,

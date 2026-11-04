@@ -163,11 +163,33 @@ def run_check():
     if len(used) > spec.MAX_MATERIALS:
         errors.append(f"{len(used)} materials in use, budget is {spec.MAX_MATERIALS}")
 
-    # 7. UV layer: Room needs the first layer named UVMap (UV_AO comes with a later amendment).
+    # 7. UV layers: Room needs `UVMap` first and `UV_AO` second (AO amendment). UV_AO must lie inside 0..1,
+    # every face must have a non-zero area there, and the total UV area can not exceed 1 (islands that
+    # overlap or leave the square break this; the bake script does the exact pixel-level overlap test).
     if room is not None and room.type == "MESH":
         layers = [l.name for l in room.data.uv_layers]
         if not layers or layers[0] != spec.ROOM_UV_LAYER:
             errors.append(f"Room: first UV layer must be named {spec.ROOM_UV_LAYER} (has {layers or 'none'})")
+        if len(layers) < 2 or layers[1] != spec.ROOM_UV_AO_LAYER:
+            errors.append(f"Room: second UV layer must be named {spec.ROOM_UV_AO_LAYER} (has {layers or 'none'})")
+        else:
+            mesh = room.data
+            ao_layer = mesh.uv_layers[spec.ROOM_UV_AO_LAYER]
+            uvs = [d.uv.copy() for d in ao_layer.data]
+            outside = [uv for uv in uvs if not (-1e-6 <= uv.x <= 1 + 1e-6 and -1e-6 <= uv.y <= 1 + 1e-6)]
+            if outside:
+                errors.append(f"Room: {spec.ROOM_UV_AO_LAYER} has {len(outside)} coordinate(s) outside 0..1")
+            total, flat = 0.0, 0
+            for poly in mesh.polygons:
+                pts = [uvs[i] for i in poly.loop_indices]
+                area = 0.5 * abs(sum(a.x * b.y - b.x * a.y for a, b in zip(pts, pts[1:] + pts[:1])))
+                total += area
+                if area < 1e-10:
+                    flat += 1
+            if flat:
+                errors.append(f"Room: {spec.ROOM_UV_AO_LAYER} has {flat} face(s) with zero area (not unwrapped)")
+            if total > 1.0:
+                errors.append(f"Room: {spec.ROOM_UV_AO_LAYER} faces cover {total:.2f} of the 0..1 square: islands overlap")
 
     # 8. Triangle budget (evaluated meshes, as the exporter applies modifiers) and modifiers.
     depsgraph = bpy.context.evaluated_depsgraph_get()

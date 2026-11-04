@@ -1,17 +1,18 @@
-import { useThree } from '@react-three/fiber'
+import { useLoader, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useRef } from 'react'
-import type { Group, Object3D } from 'three'
+import { TextureLoader, type Group, type Object3D } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { CAMERA } from '../config/look.ts'
+import { AO, CAMERA } from '../config/look.ts'
 import { frameCamera } from '../scene/framing.ts'
 import { assertContract } from './contract.ts'
 import { Model } from './NookModel.generated.tsx'
 import { applyPalette } from './palette.ts'
+import { applyRoomAo, configureAoTexture, detachRoomAo, ROOM_AO_URL } from './roomAo.ts'
 import { Steam } from './Steam.tsx'
 
 /**
  * The diorama: the generated model plus behaviour. On mount it checks the model contract (dev only, throws with the
- * missing names), applies the palette, frames the camera on the `Orbit_Target` marker once the controls exist, and
+ * missing names), applies the palette and the baked AO texture, frames the camera on the `Orbit_Target` marker once the controls exist, and
  * attaches the two steams to the `Steam_Tea` and `Steam_Kettle` markers.
  */
 export function Nook() {
@@ -21,6 +22,8 @@ export function Nook() {
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as OrbitControls | null
   const framed = useRef(false)
+  // Baked AO of `Room`. Suspends until loaded, so the first frame already has it. We created the texture, so we dispose it.
+  const aoTexture = useLoader(TextureLoader, ROOM_AO_URL)
 
   useLayoutEffect(() => {
     if (!root.current) return
@@ -35,6 +38,18 @@ export function Nook() {
       ref.current = marker
     }
   }, [])
+
+  useLayoutEffect(() => {
+    const room = root.current?.getObjectByName('Room')
+    if (!room) throw new Error('Room is missing from the model (SPEC.md section 5)')
+    configureAoTexture(aoTexture)
+    applyRoomAo(room, aoTexture, AO.intensity)
+    return () => {
+      detachRoomAo(room)
+      aoTexture.dispose()
+      useLoader.clear(TextureLoader, ROOM_AO_URL)
+    }
+  }, [aoTexture])
 
   useLayoutEffect(() => {
     if (framed.current || !controls || !root.current) return

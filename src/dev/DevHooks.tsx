@@ -4,6 +4,7 @@ import { Box3, MathUtils, Raycaster, Spherical, Vector2, Vector3, type Camera, t
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CAMERA, type CameraPresetName } from '../config/look.ts'
 import type { SteamUniforms } from '../nook/steamMaterial.ts'
+import { getRoomAoIntensity, setRoomAoIntensity } from '../nook/roomAo.ts'
 import { frameCamera } from '../scene/framing.ts'
 
 interface NookHooks {
@@ -31,6 +32,10 @@ interface NookHooks {
   worldPosition: (objectName: string) => { x: number; y: number; z: number } | null
   /** Screen pixels of a world point (for example a point inside a steam column). */
   projectPoint: (x: number, y: number, z: number) => { x: number; y: number }
+  /** Sets the `Room` AO strength (`aoMapIntensity`, 0 = off, 1 = as baked) for the AO on and off screenshots. */
+  setAOIntensity: (intensity: number) => void
+  /** Current `Room` AO strength, or null when the room has no standard materials. */
+  getAOIntensity: () => number | null
   /** Current values of a steam's uniforms (the meshes are named `SteamMesh_tea` and `SteamMesh_kettle`). */
   uniforms: (slot: 'tea' | 'kettle') => SteamUniformValues | null
 }
@@ -200,6 +205,14 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
       const rect = gl.domElement.getBoundingClientRect()
       vec.set(x, y, z).project(camera)
       return { x: Math.round(((vec.x + 1) / 2) * rect.width + rect.left), y: Math.round(((1 - vec.y) / 2) * rect.height + rect.top) }
+    },
+    setAOIntensity(intensity) {
+      const room = find('Room')
+      if (room) setRoomAoIntensity(room, intensity)
+    },
+    getAOIntensity() {
+      const room = find('Room')
+      return room ? getRoomAoIntensity(room) : null
     },
     uniforms(slot) {
       const obj = find(`SteamMesh_${slot}`)

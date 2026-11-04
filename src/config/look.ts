@@ -69,6 +69,17 @@ export interface CameraPose {
   distance: number
 }
 
+/**
+ * Baked ambient occlusion of `Room` (slice 2.4, texture `public/models/room_ao.png` on the `UV_AO` layer).
+ * `intensity` is three's `aoMapIntensity`: 0 = off, 1 = as baked. three applies it to the indirect (hemisphere)
+ * light only, so the sun-lit parts darken less than the shaded ones; 1.6 makes the contact shadows readable. Keep it
+ * at or below 1 / (1 - FLOOR) = 1.67 (FLOOR 0.40 in `tools/blender/steps/05_ao_bake.py`), above that three's
+ * `1 + (ao - 1) * intensity` goes negative in the darkest corners and shows as dark or coloured fringes.
+ */
+export const AO = {
+  intensity: 1.6,
+} as const
+
 /** Canvas and page background, behind the diorama. */
 export const BACKGROUND_COLOR = '#E9DFCB'
 
