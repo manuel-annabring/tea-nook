@@ -20,3 +20,22 @@ export function applyPalette(root: Object3D): void {
     }
   })
 }
+
+/**
+ * Sets the colour of one contract material by name, on the shared (cached) material, so every mesh that uses it
+ * follows. Used by the dev panel to try wall colours. Returns false when no material has that name.
+ */
+export function setPaletteColor(root: Object3D, name: MaterialName, color: string): boolean {
+  let found = false
+  root.traverse((node) => {
+    const material = (node as { material?: Material | Material[] }).material
+    const list = Array.isArray(material) ? material : material ? [material] : []
+    for (const m of list) {
+      if (m instanceof MeshStandardMaterial && m.name === name) {
+        m.color.set(color)
+        found = true
+      }
+    }
+  })
+  return found
+}

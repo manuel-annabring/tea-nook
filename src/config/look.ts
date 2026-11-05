@@ -7,7 +7,7 @@ export { STEAM_DEFAULTS, type SteamParams } from '../lib/steamMath.ts'
 
 /** Material color by contract material name. SPEC section 3 for the six main ones; the rest are placeholders until the references arrive. */
 export const PALETTE = {
-  Mat_Wall: '#F2E6D0',
+  Mat_Wall: '#C8D7DC',
   Mat_Wood: '#C98F5B',
   Mat_Mug: '#D9694A',
   Mat_Kettle: '#8FB8A0',
@@ -36,6 +36,13 @@ export interface LightPreset {
   fillSkyColor: string
   fillGroundColor: string
   fillIntensity: number
+  /**
+   * Weak directional light from the camera side, without a shadow: it lifts the faces of the props that point towards
+   * the viewer (the sun comes from the window on the left and grazes them). Intensity 0 turns it off.
+   */
+  frontFillColor: string
+  frontFillIntensity: number
+  frontFillPosition: Vec3
 }
 
 /** Light presets from SPEC section 3 (`morning` is applied in slice 1.4; `evening` is unused until 4.3). */
@@ -43,10 +50,15 @@ export const LIGHT_PRESETS = {
   morning: {
     sunColor: '#FFF1D6',
     sunIntensity: 4.8,
-    sunPosition: [-0.95, 1.0, -0.45],
+    // Left (-X) and slightly towards the camera (+Z): azimuth -58 degrees, elevation 42. Before F5 z was -0.45 (behind
+    // the diorama), which lit only the faces that point away from the viewer.
+    sunPosition: [-0.95, 1.0, 0.6],
     fillSkyColor: '#BFD8F0',
     fillGroundColor: '#F2E6D0',
     fillIntensity: 3.6,
+    frontFillColor: '#FFF4E0',
+    frontFillIntensity: 1.8,
+    frontFillPosition: [-0.6, 0.8, 1.2],
   },
   evening: {
     sunColor: '#FF9A57',
@@ -55,6 +67,10 @@ export const LIGHT_PRESETS = {
     fillSkyColor: '#3C4E7A',
     fillGroundColor: '#2A2A3C',
     fillIntensity: 0.5,
+    // Off for now: phase 4 designs the evening lighting (a lamp is planned there), so the front fill stays out of it.
+    frontFillColor: '#FFF4E0',
+    frontFillIntensity: 0,
+    frontFillPosition: [-0.6, 0.8, 1.2],
   },
 } as const satisfies Record<string, LightPreset>
 
@@ -84,10 +100,11 @@ export const AO = {
  * The one live shadow of the sun (slice 2.5, decision in DECISIONS.md and SPEC section 10). `mode`: `off` = baked AO
  * only, `live` = shadow map rendered every frame, `static` = rendered once (nothing that casts moves). In dev
  * `?shadow=off|live|static` overrides it for measuring. The shadow camera is orthographic, sits at the sun position
- * and looks at the world origin. `left`, `right`, `bottom`, `top` (meters, in the camera's own axes) and the depth
- * range (`near` meters in front of the origin towards the sun, `far` meters behind it) were fitted to the bounding box
- * of the diorama for the morning sun position: they must be re-fitted when `LIGHT_PRESETS.morning.sunPosition`
- * changes. Texel size is about 1.1 to 1.4 mm.
+ * and looks at the world origin. Its volume is not stored here: `fitShadowFrustum` (`src/lib/shadowFit.ts`) computes
+ * it from the bounding box of the casters and receivers (`Room`, `Mug`, `Kettle`) whenever the sun position changes,
+ * so the sun direction can move (dev panel, evening preset) without refitting by hand. `margin` (meters) is added on
+ * every side of the fitted volume for the PCF blur and the normal bias. With a 1024 map the texel size is the volume
+ * width divided by 1024, about 1.2 to 1.6 mm for the morning sun.
  */
 export const SHADOW = {
   mode: 'live',
@@ -96,12 +113,7 @@ export const SHADOW = {
   radius: 3,
   bias: -0.0004,
   normalBias: 0.003,
-  left: -0.5,
-  right: 0.59,
-  bottom: -0.53,
-  top: 0.89,
-  near: 0.65,
-  far: 0.8,
+  margin: 0.01,
 } as const
 
 /**

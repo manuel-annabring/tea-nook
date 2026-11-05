@@ -13,6 +13,7 @@ import { getShadowMode } from './shadowMode.ts'
 const DevHooks = import.meta.env.DEV ? lazy(() => import('../dev/DevHooks.tsx')) : null
 const DevPanel = import.meta.env.DEV ? lazy(() => import('../dev/DevPanel.tsx')) : null
 const DevSteam = import.meta.env.DEV ? lazy(() => import('../dev/DevSteam.tsx')) : null
+const DevLights = import.meta.env.DEV ? lazy(() => import('../dev/DevLights.tsx')) : null
 
 const { limits } = CAMERA
 const { degToRad } = MathUtils
@@ -43,6 +44,11 @@ export default function Scene() {
         {DevSteam ? (
           <Suspense fallback={null}>
             <DevSteam />
+          </Suspense>
+        ) : null}
+        {DevLights ? (
+          <Suspense fallback={null}>
+            <DevLights />
           </Suspense>
         ) : null}
         {DevHooks ? (

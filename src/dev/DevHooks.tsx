@@ -2,10 +2,12 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { Box3, DirectionalLight, HemisphereLight, MathUtils, Raycaster, Spherical, Vector2, Vector3, type Camera, type Material, type Object3D, type Scene, type ShaderMaterial, type WebGLRenderer } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { CAMERA, type CameraPresetName } from '../config/look.ts'
+import { CAMERA, type CameraPose, type CameraPresetName } from '../config/look.ts'
 import type { SteamUniforms } from '../nook/steamMaterial.ts'
 import { getRoomAoIntensity, setRoomAoIntensity } from '../nook/roomAo.ts'
 import { frameCamera } from '../scene/framing.ts'
+import { sunAnglesFromPosition } from '../lib/sunAngles.ts'
+import { applyLightLook, LIGHT_NAMES, type LightLook } from '../scene/lightRig.ts'
 
 interface NookHooks {
   /** Azimuth and polar angle in degrees, distance in meters, all relative to the controls target. */
@@ -29,13 +31,29 @@ interface NookHooks {
   snapshot: () => string
   pick: (x: number, y: number) => string | null
   stats: () => { drawCalls: number; triangles: number }
-  /** Live values of the sun and the hemisphere fill in the scene (to compare with `LIGHT_PRESETS.morning`). */
+  /** Live values of the sun, the front fill and the hemisphere fill in the scene (to compare with `LIGHT_PRESETS.morning`). */
   lights: () => {
-    sun: { color: string; intensity: number; position: [number, number, number]; castShadow: boolean; mapSize: number } | null
+    sun: {
+      color: string
+      intensity: number
+      position: [number, number, number]
+      castShadow: boolean
+      mapSize: number
+      /** The fitted shadow camera volume (left, right, bottom, top, near, far in meters) and the texel sizes in millimeters. */
+      shadow: { left: number; right: number; bottom: number; top: number; near: number; far: number; texelXmm: number; texelYmm: number }
+    } | null
+    frontFill: { color: string; intensity: number; position: [number, number, number]; castShadow: boolean } | null
     fill: { skyColor: string; groundColor: string; intensity: number } | null
     toneMapping: number
     shadowMapEnabled: boolean
   }
+  /** Moves the camera to a pose around the `Orbit_Target` marker (azimuth and polar in degrees, distance in meters), like a preset. */
+  setCamera: (pose: CameraPose) => void
+  /**
+   * Changes live light values without the panel (same code path as the Leva Light folder: `applyLightLook`, which also
+   * refits the shadow). Unspecified values keep their current setting.
+   */
+  setLights: (patch: Partial<LightLook>) => void
   /**
    * Runs `controls.update()` `frames` times at once, so damped orbit input (drags, wheel) settles without waiting for
    * real frames (the built-in browser pane only runs requestAnimationFrame at 1 Hz while hidden).
@@ -95,8 +113,7 @@ function isPreset(name: string | null): name is CameraPresetName {
   return name !== null && name in CAMERA.presets
 }
 
-function applyPreset(rig: Rig, name: CameraPresetName) {
-  const pose = CAMERA.presets[name]
+function applyPose(rig: Rig, pose: CameraPose) {
   const marker = rig.scene.getObjectByName('Orbit_Target')
   if (!marker) throw new Error('Orbit_Target is missing from the model')
   const { limits } = CAMERA
@@ -216,15 +233,34 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
     lights() {
       const { scene, gl } = rigRef.current
       let sun: ReturnType<NookHooks['lights']>['sun'] = null
+      let frontFill: ReturnType<NookHooks['lights']>['frontFill'] = null
       let fill: ReturnType<NookHooks['lights']>['fill'] = null
       scene.traverse((node) => {
-        if (node instanceof DirectionalLight) {
+        if (node instanceof DirectionalLight && node.name === LIGHT_NAMES.sun) {
+          const cam = node.shadow.camera
           sun = {
             color: `#${node.color.getHexString().toUpperCase()}`,
             intensity: node.intensity,
             position: [node.position.x, node.position.y, node.position.z],
             castShadow: node.castShadow,
             mapSize: node.shadow.mapSize.x,
+            shadow: {
+              left: cam.left,
+              right: cam.right,
+              bottom: cam.bottom,
+              top: cam.top,
+              near: cam.near,
+              far: cam.far,
+              texelXmm: ((cam.right - cam.left) / node.shadow.mapSize.x) * 1000,
+              texelYmm: ((cam.top - cam.bottom) / node.shadow.mapSize.y) * 1000,
+            },
+          }
+        } else if (node instanceof DirectionalLight && node.name === LIGHT_NAMES.front) {
+          frontFill = {
+            color: `#${node.color.getHexString().toUpperCase()}`,
+            intensity: node.intensity,
+            position: [node.position.x, node.position.y, node.position.z],
+            castShadow: node.castShadow,
           }
         } else if (node instanceof HemisphereLight) {
           fill = {
@@ -234,7 +270,28 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
           }
         }
       })
-      return { sun, fill, toneMapping: gl.toneMapping, shadowMapEnabled: gl.shadowMap.enabled }
+      return { sun, frontFill, fill, toneMapping: gl.toneMapping, shadowMapEnabled: gl.shadowMap.enabled }
+    },
+    setCamera(pose) {
+      applyPose(rigRef.current, pose)
+    },
+    setLights(patch) {
+      const { scene } = rigRef.current
+      const sun = scene.getObjectByName(LIGHT_NAMES.sun) as DirectionalLight | undefined
+      const hemisphere = scene.getObjectByName(LIGHT_NAMES.hemisphere) as HemisphereLight | undefined
+      const front = scene.getObjectByName(LIGHT_NAMES.front) as DirectionalLight | undefined
+      if (!sun || !hemisphere || !front) throw new Error('setLights: Sun, HemiFill or FrontFill is missing from the scene')
+      const angles = sunAnglesFromPosition([sun.position.x, sun.position.y, sun.position.z])
+      applyLightLook(scene, {
+        sunAzimuth: angles.azimuth,
+        sunElevation: angles.elevation,
+        sunIntensity: sun.intensity,
+        sunColor: `#${sun.color.getHexString()}`,
+        hemisphereIntensity: hemisphere.intensity,
+        frontIntensity: front.intensity,
+        frontColor: `#${front.color.getHexString()}`,
+        ...patch,
+      })
     },
     settle(frames = 200) {
       const { controls } = rigRef.current
@@ -331,7 +388,7 @@ export default function DevHooks() {
     // Wait for the model: the preset is relative to the Orbit_Target marker, and `Nook` frames the default pose on mount.
     if (!presetDone.current && rig.controls && rig.scene.getObjectByName('Orbit_Target')) {
       const name = new URLSearchParams(window.location.search).get('cam')
-      if (isPreset(name)) applyPreset(rig, name)
+      if (isPreset(name)) applyPose(rig, CAMERA.presets[name])
       presetDone.current = true
     }
     // Ready = camera preset applied, the model mounted, and one full frame rendered since.
