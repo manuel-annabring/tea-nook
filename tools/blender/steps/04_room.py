@@ -8,8 +8,12 @@ the room is rebuilt from scratch each time.
 
 Built in one bmesh: window frame with cross mullion, sill, head and casing; cabinet with toe kick,
 doors with raised panels and handles; worktop with chamfered front and right edges; floor boards;
-baseboards and a wall top trim; a pot with a rim and a fan of parametric leaves; a tin with lid and
-lip; three books made of covers, pages and spine.
+baseboards and a wall top trim; a tin with lid and lip; three books made of covers, pages and spine; and
+two plants (slice F4): a floor plant (octagonal tapered pot, three curved stems, lobed leaves in an upper
+and a lower cluster) and a hanging planter on the left wall (wall bracket, three ropes, octagonal bowl,
+a mound of coin leaves and trailing vines with coin leaves). All of it stays inside `Room` (no new
+objects, no new materials: stems and ropes use Mat_Wood, pots Mat_Pot, leaves Mat_Leaf). Leaves and coins
+are single open surfaces (every material is double sided), so they cost 6 to 10 triangles each.
 
 Run (on a copy first, then on the real file):
   Blender -b tools/blender/nook.blend --python tools/blender/steps/04_room.py -- [output.blend]
@@ -65,24 +69,90 @@ BOARD_JOINT = (0.34, 0.62, 0.48, 0.71, 0.27)  # joint position as a fraction of 
 BASE_H, BASE_T = 0.040, 0.008
 TRIM_H, TRIM_OVER = 0.014, 0.006  # top trim height (inside WALL_H) and overhang per side
 
-# Plant (pot with rim, leaves fanned around the centre).
+# Floor plant (slice F4): octagonal tapered pot, three thin curved stems, two leaf clusters.
 PLANT_XY = (0.46, 0.10)
-POT_PROFILE = [  # (radius, z) from the underside centre outwards, over the rim and down the inside
+PLANT_REACH_X = (0.315, 0.585)  # leaves must stay right of the worktop (x 0.30) and on the floor (x 0.60)
+PLANT_MAX_Y = 0.215  # and in front of the back wall (y 0.225)
+POT_SIDES = 8
+POT_PHASE = math.pi / 8  # half a segment, so a flat facet (not a corner) faces +X
+POT_PROFILE = [  # (radius, z): underside centre, tapered wall (narrow at the bottom), thicker rim, inner wall, soil
     (0.0, 0.0),
     (0.030, 0.0),
-    (0.046, 0.074),
-    (0.0525, 0.074),  # rim underside
-    (0.0525, 0.090),
-    (0.0455, 0.090),  # rim top
-    (0.0440, 0.082),  # inner wall
-    (0.0, 0.082),  # soil level
+    (0.048, 0.078),
+    (0.0545, 0.078),  # rim underside, sticks out 6.5 mm
+    (0.0545, 0.093),
+    (0.0470, 0.093),  # rim top
+    (0.0450, 0.085),  # inner wall
+    (0.0, 0.085),  # soil level (Mat_Pot, there is no soil material)
 ]
-LEAF_COUNT = 11
-LEAF_LEN = (0.085, 0.118)  # shortest and longest leaf
-LEAF_WIDTH_FRAC = 0.68  # width as a fraction of length
-LEAF_PITCH = (50.0, 22.0)  # degrees above horizontal: upper tier, lower tier
-LEAF_DROOP, LEAF_FOLD, LEAF_THICK = 0.16, 0.06, 0.0025  # tip droop and midrib fold as fractions of length, thickness
-LEAF_BASE_R = 0.006  # leaves start this far from the pot axis
+# Stems: (lateral offset of the top from the pot axis (x, y), height of the top above the pot bottom, bulge of the
+# curve sideways as a fraction of the height, direction of the bulge in degrees, base radius, top radius).
+STEMS = [
+    ((0.004, -0.008), 0.275, 0.035, 200.0, 0.0022, 0.0015),  # tallest: upper cluster
+    ((-0.022, 0.012), 0.195, 0.04, 35.0, 0.0020, 0.0014),  # second: lower cluster
+    ((0.004, 0.026), 0.150, 0.04, 280.0, 0.0018, 0.0013),  # shortest: one small leaf
+]
+STEM_SIDES, STEM_SEGMENTS = 4, 4
+# Leaves: (stem index, yaw degrees, pitch above horizontal, roll degrees, length). Lobed leaf, see `lobed_leaf`.
+PLANT_LEAVES = [  # (stem, yaw, pitch, roll, length, petiole length); leaves that point towards the camera (yaw about 295) droop, leaves that point away rise, so both show their faces
+    (0, 305, 14, 6, 0.112, 0.030),
+    (0, 335, 22, -8, 0.100, 0.028),
+    (0, 48, 40, 10, 0.108, 0.030),
+    (0, 118, 54, -6, 0.110, 0.028),
+    (0, 195, 40, 8, 0.108, 0.030),
+    (1, 318, 8, 8, 0.088, 0.024),
+    (1, 28, 24, -8, 0.084, 0.024),
+    (1, 135, 46, 10, 0.086, 0.024),
+    (2, 250, 12, 6, 0.072, 0.020),
+]
+LEAF_WIDTH, LEAF_FOLD, LEAF_DROOP, LEAF_LOBE_DROP = 1.15, 0.08, 0.30, 0.08
+PETIOLE_R = 0.0012  # leaf stalk radius (3 sided)  # width factor, vein rise, tip droop, lobe drop (fractions of length)
+
+# Hanging planter on the left wall (slice F4), in front of the window (towards the camera, y < 0).
+HANG_XY = (-0.200, -0.385)  # bowl axis: 5 cm away from the wall face (x -0.30) at the rim, 10 cm clear of the window sill
+HANG_RIM_Z = 0.245  # rim height above the worktop top (the window runs 0.12 to 0.42)
+HANG_ROPE_LEN = 0.125  # rope length measured vertically from the bowl rim to the bracket ring
+HANG_MAX_Y = -0.255  # nothing may be further back than this (worktop front is -0.225, window casing -0.192)
+BOWL_SIDES = 8
+BOWL_PROFILE = [  # shallow bowl: underside, wide sloping wall, small lip, inner wall, soil
+    (0.0, 0.0),
+    (0.021, 0.0),
+    (0.047, 0.032),
+    (0.0505, 0.032),
+    (0.0505, 0.038),
+    (0.0465, 0.038),
+    (0.0445, 0.031),
+    (0.0, 0.031),
+]
+BRACKET_PLATE = (0.006, 0.026, 0.034)  # wall plate size (x thickness, y, z), flush on the wall
+BRACKET_ARM = 0.008  # square arm section
+ROPE_ANGLES = (35.0, 155.0, 275.0)  # where the three ropes meet the rim (degrees around the bowl axis)
+ROPE_R = 0.0016  # rope radius (square section)
+COIN_SIDES = 6
+MOUND_COINS = [  # (radius from axis, angle deg, height above soil, tilt deg, radius of coin, spin deg)
+    (0.000, 0, 0.030, 8, 0.022, 10),
+    (0.020, 20, 0.023, 22, 0.021, 30),
+    (0.020, 92, 0.024, 20, 0.022, 80),
+    (0.020, 165, 0.022, 24, 0.021, 15),
+    (0.020, 240, 0.024, 20, 0.022, 55),
+    (0.020, 315, 0.023, 23, 0.020, 70),
+    (0.037, 55, 0.014, 30, 0.021, 40),
+    (0.037, 125, 0.015, 28, 0.020, 5),
+    (0.037, 205, 0.014, 32, 0.021, 60),
+    (0.037, 275, 0.014, 28, 0.020, 25),
+    (0.042, 352, 0.012, 34, 0.019, 45),
+]
+# Vines: (angle deg, length, sway as a fraction of length, sway direction deg, coin count). They leave over the rim and hang
+# straight down; each carries round coins at steps along it.
+VINES = [
+    (352.0, 0.250, 0.05, 90.0, 8),
+    (50.0, 0.180, 0.06, 200.0, 6),
+    (108.0, 0.290, 0.05, 330.0, 9),
+    (205.0, 0.150, 0.07, 120.0, 5),
+    (312.0, 0.215, 0.06, 20.0, 7),
+]
+VINE_R, VINE_SIDES = 0.0017, 3
+VINE_COIN_R = (0.0165, 0.0115)  # coin radius near the bowl, near the tip
 
 # Tin on the worktop.
 TIN_XY = (-0.20, -0.13)
@@ -134,9 +204,9 @@ def box(bm, lo, hi, mat, frame=None):
     return res["verts"]
 
 
-def lathe(bm, profile, centre, mat, segments=SEGMENTS):
+def lathe(bm, profile, centre, mat, segments=SEGMENTS, phase=0.0):
     """Solid of revolution around the Z axis through `centre`. `profile` is a list of (radius, z) points;
-    radius 0 is a single vertex on the axis (a triangle fan)."""
+    radius 0 is a single vertex on the axis (a triangle fan). `phase` turns the ring (radians)."""
     cx, cy, cz = centre
     rings = []
     for r, z in profile:
@@ -145,7 +215,7 @@ def lathe(bm, profile, centre, mat, segments=SEGMENTS):
         else:
             rings.append(
                 [
-                    bm.verts.new((cx + r * math.cos(2 * math.pi * k / segments), cy + r * math.sin(2 * math.pi * k / segments), cz + z))
+                    bm.verts.new((cx + r * math.cos(phase + 2 * math.pi * k / segments), cy + r * math.sin(phase + 2 * math.pi * k / segments), cz + z))
                     for k in range(segments)
                 ]
             )
@@ -163,29 +233,86 @@ def lathe(bm, profile, centre, mat, segments=SEGMENTS):
             bm.faces.new(face).material_index = mat
 
 
-def leaf(bm, base, yaw, pitch_deg, length, mat, leaf_faces):
-    """One flat low-poly leaf (a folded diamond, 4 triangles on top and 4 below) fanned out from `base`.
-    Local frame: the leaf points along +X, its midrib is folded up, its tip droops."""
-    w = length * LEAF_WIDTH_FRAC
-    top = [
-        (0.0, 0.0, 0.0),  # 0 base
-        (0.40 * length, -w / 2, 0.0),  # 1 left
-        (0.40 * length, 0.0, LEAF_FOLD * length),  # 2 midrib (folded up)
-        (0.40 * length, w / 2, 0.0),  # 3 right
-        (length, 0.0, -LEAF_DROOP * length),  # 4 tip
-    ]
-    frame = Matrix.Translation(base) @ Matrix.Rotation(yaw, 4, "Z") @ Matrix.Rotation(-math.radians(pitch_deg), 4, "Y")
-    tri = [(0, 1, 2), (0, 2, 3), (1, 4, 2), (2, 4, 3)]  # counter-clockwise seen from above
-    up = [bm.verts.new(frame @ Vector(p)) for p in top]
-    down = [bm.verts.new(frame @ (Vector(p) - Vector((0, 0, LEAF_THICK)))) for p in top]
-    for a, b, c in tri:
-        leaf_faces.append(bm.faces.new((up[a], up[b], up[c])))
-        leaf_faces.append(bm.faces.new((down[a], down[c], down[b])))  # reversed: faces down
-    # Close the thin edge: side quads along the outline (base-left, left-tip, tip-right, right-base).
-    for a, b in ((0, 1), (1, 4), (4, 3), (3, 0)):
-        leaf_faces.append(bm.faces.new((up[a], down[a], down[b], up[b])))
-    for f in leaf_faces:
+def tube(bm, points, radii, sides, mat, phase=0.0, caps=True):
+    """Prism with `sides` faces along a polyline, radius per point (so it can taper). Closed (end caps) unless
+    `caps` is false. Normals are fixed afterwards by the main `recalc_face_normals`."""
+    pts = [Vector(p) for p in points]
+    rings = []
+    for i, p in enumerate(pts):
+        t = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+        ref = Vector((0, 0, 1)) if abs(t.z) < 0.95 else Vector((1, 0, 0))
+        u = ref.cross(t).normalized()
+        v = t.cross(u)
+        ring = [
+            bm.verts.new(p + radii[i] * (math.cos(phase + 2 * math.pi * k / sides) * u + math.sin(phase + 2 * math.pi * k / sides) * v))
+            for k in range(sides)
+        ]
+        rings.append(ring)
+    for a, b in zip(rings, rings[1:]):
+        for k in range(sides):
+            k2 = (k + 1) % sides
+            bm.faces.new((a[k], a[k2], b[k2], b[k])).material_index = mat
+    if caps:
+        bm.faces.new(rings[0]).material_index = mat
+        bm.faces.new(rings[-1][::-1]).material_index = mat
+
+
+def surface(bm, frame, coords, tris, mat, open_faces):
+    """Single open surface (a leaf or a coin): `coords` in the local frame, `tris` index triples, counter-clockwise seen
+    from the local +Z (that is the side the AO bake treats as the front). Faces go into `open_faces` so the closed-solid
+    normal fix skips them."""
+    verts = [bm.verts.new(frame @ Vector(c)) for c in coords]
+    for a, b, c in tris:
+        f = bm.faces.new((verts[a], verts[b], verts[c]))
         f.material_index = mat
+        open_faces.append(f)
+    return verts
+
+
+def lobed_leaf(bm, base, yaw_deg, pitch_deg, roll_deg, length, mat, open_faces):
+    """Palmate leaf, 10 triangles: a raised centre vein (base, two vein points, tip), a long pointed centre lobe and a pointed
+    side lobe on each side, with a notch between them. The side lobes hang below the vein (a V fold along the vein) and the
+    tip droops. Points forward along +X of its frame, which is yawed, pitched up and rolled about its own axis."""
+    L = length
+    w = LEAF_WIDTH
+
+    def pt(x, y, vein):
+        z = (LEAF_FOLD * L if vein else LEAF_FOLD * L - LEAF_LOBE_DROP * L * abs(y) / (0.40 * L * w)) - LEAF_DROOP * L * (x / L) ** 2
+        return (x, y, z)
+
+    coords = [
+        pt(0.0, 0.0, True),  # 0 base
+        pt(0.30 * L, 0.0, True),  # 1 vein point
+        pt(0.62 * L, 0.0, True),  # 2 vein point
+        pt(1.00 * L, 0.0, True),  # 3 tip
+        pt(0.14 * L, -0.15 * L * w, False),  # 4 right shoulder
+        pt(0.50 * L, -0.40 * L * w, False),  # 5 right lobe tip
+        pt(0.70 * L, -0.14 * L * w, False),  # 6 right notch (between the side lobe and the long tip lobe)
+        pt(0.14 * L, 0.15 * L * w, False),  # 7 left shoulder
+        pt(0.50 * L, 0.40 * L * w, False),  # 8 left lobe tip
+        pt(0.70 * L, 0.14 * L * w, False),  # 9 left notch
+    ]
+    # Counter-clockwise seen from above (+X forward, +Y left): the right side runs base -> lobe -> vein.
+    tris = [
+        (0, 4, 1), (4, 5, 1), (5, 2, 1), (5, 6, 2), (6, 3, 2),  # right side
+        (0, 1, 7), (7, 1, 8), (8, 1, 2), (8, 2, 9), (9, 2, 3),  # left side
+    ]
+    frame = (
+        Matrix.Translation(base)
+        @ Matrix.Rotation(math.radians(yaw_deg), 4, "Z")
+        @ Matrix.Rotation(-math.radians(pitch_deg), 4, "Y")
+        @ Matrix.Rotation(math.radians(roll_deg), 4, "X")
+    )
+    surface(bm, frame, coords, tris, mat, open_faces)
+
+
+def coin(bm, centre, radius, tilt_deg, spin_deg, mat, open_faces, sides=COIN_SIDES, dome=0.0015):
+    """Round flat leaf: a hexagon fan (6 triangles) with the middle slightly raised so it is not perfectly flat. It is tilted
+    by `tilt_deg` about an axis in the plane at `spin_deg` around Z."""
+    coords = [(0.0, 0.0, dome)] + [(radius * math.cos(2 * math.pi * k / sides), radius * math.sin(2 * math.pi * k / sides), 0.0) for k in range(sides)]
+    tris = [(0, 1 + k, 1 + (k + 1) % sides) for k in range(sides)]
+    frame = Matrix.Translation(centre) @ Matrix.Rotation(math.radians(spin_deg), 4, "Z") @ Matrix.Rotation(math.radians(tilt_deg), 4, "Y")
+    surface(bm, frame, coords, tris, mat, open_faces)
 
 
 def assign_uvs(bm, layer_name):
@@ -319,20 +446,101 @@ def build_cabinet(bm):
             box(bm, (hx - 0.002, y_bar, sz - 0.002), (hx + 0.002, y_face, sz + 0.002), wd)
 
 
-def build_plant(bm, leaf_faces):
+def check_bounds(bm, first_vert, label, x_range, y_range):
+    """Fails loudly if any vertex created since `first_vert` (an index into bm.verts) leaves the allowed x and y range."""
+    bm.verts.ensure_lookup_table()
+    bm.verts.index_update()
+    pts = [bm.verts[i].co for i in range(first_vert, len(bm.verts))]
+    lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
+    hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
+    tris = sum(len(f.verts) - 2 for f in bm.faces if all(v.index >= first_vert for v in f.verts))
+    print(f"[04_room] {label}: {tris} triangles, x {lo.x:.3f}..{hi.x:.3f}, y {lo.y:.3f}..{hi.y:.3f}, z {lo.z:.3f}..{hi.z:.3f}")
+    if lo.x < x_range[0] - 1e-6 or hi.x > x_range[1] + 1e-6 or lo.y < y_range[0] - 1e-6 or hi.y > y_range[1] + 1e-6:
+        raise SystemExit(f"04_room: {label} leaves its allowed area x {x_range}, y {y_range}")
+
+
+def build_plant(bm, open_faces):
+    """Floor plant: octagonal tapered pot, three thin curved stems of different height, lobed leaves in clusters."""
+    v0 = len(bm.verts)
     px, py = PLANT_XY
     floor_top = -FLOOR_Z + max(BOARD_H)
-    lathe(bm, POT_PROFILE, (px, py, floor_top), IDX["Mat_Pot"])
+    lathe(bm, POT_PROFILE, (px, py, floor_top), IDX["Mat_Pot"], POT_SIDES, POT_PHASE)
     soil_z = floor_top + POT_PROFILE[-1][1]
-    golden = math.pi * (3 - math.sqrt(5))
-    for i in range(LEAF_COUNT):
-        t = i / (LEAF_COUNT - 1)
-        tier = i % 2  # alternate upper and lower tier
-        yaw = i * golden
-        length = LEAF_LEN[0] + (LEAF_LEN[1] - LEAF_LEN[0]) * (0.5 + 0.5 * math.sin(i * 2.3)) * (1.0 if tier == 0 else 0.8)
-        base = Vector((px + LEAF_BASE_R * math.cos(yaw), py + LEAF_BASE_R * math.sin(yaw), soil_z - 0.002))
-        pitch = LEAF_PITCH[tier] + 6.0 * math.sin(i * 1.7)
-        leaf(bm, base, yaw, pitch, length, IDX["Mat_Leaf"], leaf_faces)
+    tops = []
+    for (ox, oy), height, bulge, bulge_deg, r0, r1 in STEMS:
+        base = Vector((px, py, soil_z - 0.004))  # starts a little inside the pot so no gap shows
+        top = Vector((px + ox, py + oy, floor_top + height))
+        side = Vector((math.cos(math.radians(bulge_deg)), math.sin(math.radians(bulge_deg)), 0.0)) * (bulge * height)
+        pts, radii = [], []
+        for i in range(STEM_SEGMENTS + 1):
+            t = i / STEM_SEGMENTS
+            pts.append(base.lerp(top, t) + side * math.sin(math.pi * t))  # a gentle bow towards `side`
+            radii.append(r0 + (r1 - r0) * t)
+        tube(bm, pts, radii, STEM_SIDES, IDX["Mat_Wood"], phase=math.pi / 4)
+        tops.append(pts[-1])
+    for stem, yaw, pitch, roll, length, petiole in PLANT_LEAVES:
+        yawr, pr = math.radians(yaw), math.radians(max(pitch, 10.0) * 0.8)
+        # A thin leaf stalk fans each leaf out from the stem top (so the leaves do not pile up on one point and the stem stays visible).
+        stalk = Vector((math.cos(yawr) * math.cos(pr), math.sin(yawr) * math.cos(pr), math.sin(pr))) * petiole
+        base = tops[stem] + stalk
+        tube(bm, [tops[stem], base], [PETIOLE_R, PETIOLE_R * 0.8], 3, IDX["Mat_Wood"], caps=True)
+        lobed_leaf(bm, base, yaw, pitch, roll, length, IDX["Mat_Leaf"], open_faces)
+    check_bounds(bm, v0, "floor plant", PLANT_REACH_X, (-1.0, PLANT_MAX_Y))
+
+
+def build_wall_plant(bm, open_faces):
+    """Hanging planter: wall plate and arm, three ropes, octagonal bowl, a mound of coin leaves and trailing vines."""
+    v0 = len(bm.verts)
+    hx, hy = HANG_XY
+    wall_x = -COUNTER_X / 2  # inner face of the left wall
+    rim_z = HANG_RIM_Z + 0.0  # top of the bowl lip is bowl_z + 0.038; the bowl is placed so that this is HANG_RIM_Z
+    bowl_z = rim_z - BOWL_PROFILE[4][1]
+    ring_z = rim_z + HANG_ROPE_LEN
+    wd, pot, leaf = IDX["Mat_Wood"], IDX["Mat_Pot"], IDX["Mat_Leaf"]
+
+    # Bracket: a small plate flush on the wall and a square arm that reaches out over the bowl axis, ending in a ring block.
+    pt_x, pt_y, pt_z = BRACKET_PLATE
+    box(bm, (wall_x, hy - pt_y / 2, ring_z + 0.004 - pt_z / 2), (wall_x + pt_x, hy + pt_y / 2, ring_z + 0.004 + pt_z / 2), wd)
+    a = BRACKET_ARM / 2
+    box(bm, (wall_x + pt_x - 0.001, hy - a, ring_z + 0.004 - a), (hx + a, hy + a, ring_z + 0.004 + a), wd)  # arm
+    box(bm, (hx - 0.005, hy - 0.005, ring_z - 0.006), (hx + 0.005, hy + 0.005, ring_z + 0.004 - a), wd)  # ring block hanging below the arm end
+
+    # Bowl and ropes (from the ring block to three points on the rim).
+    lathe(bm, BOWL_PROFILE, (hx, hy, bowl_z), pot, BOWL_SIDES, math.pi / 8)
+    rim_r = BOWL_PROFILE[3][0]
+    ring = Vector((hx, hy, ring_z - 0.006))
+    for deg in ROPE_ANGLES:
+        r = math.radians(deg)
+        rim_pt = Vector((hx + rim_r * math.cos(r), hy + rim_r * math.sin(r), rim_z - 0.004))
+        tube(bm, [ring, rim_pt], [ROPE_R] * 2, 4, wd, phase=math.pi / 4)
+
+    # Mound of coins on the soil.
+    soil_z = bowl_z + BOWL_PROFILE[-1][1]
+    for rad, deg, h, tilt, cr, spin in MOUND_COINS:
+        d = math.radians(deg)
+        c = Vector((hx + rad * math.cos(d), hy + rad * math.sin(d), soil_z + h))
+        coin(bm, c, cr, tilt, spin + deg, leaf, open_faces)  # spin follows the angle so tilts lean outwards
+
+    # Vines over the rim with coins along them.
+    for deg, length, sway, sway_deg, n_coins in VINES:
+        d, sd = math.radians(deg), math.radians(sway_deg)
+        start = Vector((hx + (rim_r - 0.006) * math.cos(d), hy + (rim_r - 0.006) * math.sin(d), rim_z - 0.002))
+        over = Vector((hx + (rim_r + 0.006) * math.cos(d), hy + (rim_r + 0.006) * math.sin(d), rim_z - 0.012))
+        end_xy = Vector((hx + (rim_r + 0.008) * math.cos(d) + sway * length * math.cos(sd), hy + (rim_r + 0.008) * math.sin(d) + sway * length * math.sin(sd), 0.0))
+        pts = [start, over, Vector((end_xy.x, end_xy.y, over.z - length))]  # in over the rim, then one straight hanging run
+        radii = [VINE_R * (1.0 - 0.45 * i / (len(pts) - 1)) for i in range(len(pts))]
+        tube(bm, pts, radii, VINE_SIDES, leaf, phase=0.5, caps=True)
+        # Coins along the lower part of the vine: position by arc parameter, alternating sides, shrinking towards the tip.
+        for j in range(n_coins):
+            t = (j + 0.6) / (n_coins + 0.2)
+            seg = min(int(t * (len(pts) - 1)), len(pts) - 2)
+            f = t * (len(pts) - 1) - seg
+            c = pts[seg].lerp(pts[seg + 1], f)
+            side = 1.0 if j % 2 == 0 else -1.0
+            cr = VINE_COIN_R[0] + (VINE_COIN_R[1] - VINE_COIN_R[0]) * t
+            off = Vector((-math.sin(d), math.cos(d), 0.0)) * (side * cr * 0.55)  # beside the vine, so it hangs from a short stalk
+            coin(bm, c + off, cr, 24.0 + 8.0 * (j % 3), 40.0 * j + deg, leaf, open_faces)
+    check_bounds(bm, v0, "wall plant", (wall_x, 1.0), (-1.0, HANG_MAX_Y))
 
 
 def build_tin(bm):
@@ -374,17 +582,18 @@ def main():
     assert tuple(room.location) == (0.0, 0.0, 0.0), "Room origin is not the world origin"
 
     bm = bmesh.new()
-    leaf_faces = []
+    open_faces = []
     build_walls_and_window(bm)
     build_floor(bm)
     build_cabinet(bm)
-    build_plant(bm, leaf_faces)
+    build_plant(bm, open_faces)
+    build_wall_plant(bm, open_faces)
     build_tin(bm)
     build_books(bm)
 
-    # Outward normals for the closed solids; leaves are open shells with explicit winding, so skip them.
-    leaf_set = set(leaf_faces)
-    bmesh.ops.recalc_face_normals(bm, faces=[f for f in bm.faces if f not in leaf_set])
+    # Outward normals for the closed solids; leaves and coins are open surfaces with explicit winding, so skip them.
+    open_set = set(open_faces)
+    bmesh.ops.recalc_face_normals(bm, faces=[f for f in bm.faces if f not in open_set])
     for f in bm.faces:
         f.smooth = False
     assign_uvs(bm, "UVMap")

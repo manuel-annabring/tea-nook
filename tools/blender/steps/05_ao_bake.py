@@ -12,6 +12,11 @@ Opens the .blend Blender was started with and does two things, headless:
    scene while baking, so the contact darkening under them ends up in the Room texture, but nothing is
    baked onto them. `Window_Glass` and `Window_Sky` are hidden for the bake so the window is not blocked.
 
+Thin faces (floor board edges, trim, handles, book covers) would get about one texel each at that density, so
+their AO would be smeared and the dark crack between two floor boards would not show (slice F4). Single-face
+islands with a short side under `THIN_MM` are therefore scaled up before packing (`boost_thin_faces`), at most
+`BOOST_MAX` times; everything else keeps the common density.
+
 All temporary things (bake image nodes, render settings, world, hidden flags) are removed or restored,
 so the final materials are unchanged. Re-runnable: an existing `UV_AO` is removed and rebuilt.
 
@@ -25,6 +30,7 @@ import shutil
 import sys
 import time
 
+import bmesh
 import bpy
 import numpy as np
 
@@ -48,6 +54,12 @@ ROOM_MATERIALS = ["Mat_Wall", "Mat_Wood", "Mat_Frame", "Mat_Leaf", "Mat_Pot", "M
 BURIED_BELOW = 0.30  # raw AO under this is pure FLOOR after levelling; a face with no pixel above it is buried
 ERODE_PX = BAKE_MARGIN_PX + 2  # island border ignored when deciding whether a face is buried
 HIDE_FOR_BAKE = ["Window_Glass", "Window_Sky"]
+# Thin faces (floor board edges, trim, handles, book covers) are 2 to 8 mm across, about one texel at the common density,
+# so their bake is one smeared pixel that cannot show the dark crack between two boards. Each single-face island whose
+# short side is below THIN_MM is scaled up (about its centre, before packing) so that side gets about THIN_MM at the common
+# density, at most BOOST_MAX times. Those islands then get several texels of their own (slice F4, floor joints).
+THIN_MM = 16.0
+BOOST_MAX = 4.0
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_PNG = os.path.abspath(os.path.join(HERE, "..", "..", "..", "public", "models", "room_ao.png"))
@@ -79,6 +91,7 @@ def unwrap_uv_ao(room):
     # Smart UV Project cuts the mesh into islands wherever the angle between faces is large (our boxes
     # fall apart into one island per face) and keeps the same texel density for all of them (area_weight).
     bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=ISLAND_MARGIN, area_weight=1.0, correct_aspect=True, scale_to_bounds=False)
+    boost_thin_faces(mesh)
     bpy.ops.uv.select_all(action="SELECT")
     # Pack all islands into 0..1 (rotation allowed for a tight fit, scaling keeps relative sizes).
     bpy.ops.uv.pack_islands(udim_source="CLOSEST_UDIM", rotate=True, margin_method="ADD", margin=ISLAND_MARGIN, shape_method="CONCAVE")
@@ -87,6 +100,42 @@ def unwrap_uv_ao(room):
     # `UVMap` stays the first layer and the one used for rendering/export order; UV_AO is addressed by name.
     mesh.uv_layers.active = mesh.uv_layers["UVMap"]
     return layer
+
+
+def boost_thin_faces(mesh):
+    """Scale up the UV island of every thin, single-face island (see THIN_MM). Runs in edit mode on the active UV layer, after
+    Smart UV Project and before packing. Returns (count, histogram of factors)."""
+    bm = bmesh.from_edit_mesh(mesh)
+    uv = bm.loops.layers.uv[UV_AO]
+    count, factors = 0, []
+    for f in bm.faces:
+        if len(f.verts) != 4:
+            continue
+        short = min(e.calc_length() for e in f.edges) * 1000.0  # millimetres
+        if short >= THIN_MM:
+            continue
+        # Only islands made of this one face: every neighbour across an edge must have different UVs there.
+        alone = True
+        for loop in f.loops:
+            other = loop.link_loop_radial_next
+            if other is loop:
+                continue
+            a0, a1 = loop[uv].uv, loop.link_loop_next[uv].uv
+            b0, b1 = other[uv].uv, other.link_loop_next[uv].uv
+            if (a0 - b1).length < 1e-6 and (a1 - b0).length < 1e-6:
+                alone = False
+                break
+        if not alone:
+            continue
+        k = min(BOOST_MAX, THIN_MM / max(short, 1e-3))
+        c = sum((l[uv].uv for l in f.loops), type(f.loops[0][uv].uv)((0, 0))) / len(f.loops)
+        for l in f.loops:
+            l[uv].uv = c + (l[uv].uv - c) * k
+        count += 1
+        factors.append(k)
+    bmesh.update_edit_mesh(mesh)
+    print(f"[05_ao_bake] thin single-face islands boosted: {count}" + (f" (factor {min(factors):.1f} to {max(factors):.1f})" if factors else ""))
+    return count
 
 
 def rasterize_uv_ao(mesh):
