@@ -66,6 +66,8 @@ export const KETTLE_STEAM_LOOK: SteamLook = {
   ...STEAM_LOOK_DEFAULTS,
   density: STEAM_LOOK_DEFAULTS.density * KETTLE_STEAM_DENSITY_FACTOR,
   height: KETTLE_HEIGHT_BASE * KETTLE_STEAM_HEIGHT_FACTOR,
+  // Water vapour, not tea: nearly white (the tea steam keeps the warm tint of the selected tea).
+  color: '#F6F6F3',
   radius: 0.055,
   widthBase: 0.22,
   widthPower: 1.3,

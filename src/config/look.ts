@@ -7,7 +7,7 @@ export { STEAM_DEFAULTS, type SteamParams } from '../lib/steamMath.ts'
 
 /** Material color by contract material name. SPEC section 3 for the six main ones; the rest are placeholders until the references arrive. */
 export const PALETTE = {
-  Mat_Wall: '#C8D7DC',
+  Mat_Wall: '#F2E6D0',
   Mat_Wood: '#C98F5B',
   Mat_Mug: '#D9694A',
   Mat_Kettle: '#8FB8A0',
@@ -50,9 +50,9 @@ export const LIGHT_PRESETS = {
   morning: {
     sunColor: '#FFF1D6',
     sunIntensity: 4.8,
-    // Left (-X) and slightly towards the camera (+Z): azimuth -58 degrees, elevation 42. Before F5 z was -0.45 (behind
-    // the diorama), which lit only the faces that point away from the viewer.
-    sunPosition: [-0.95, 1.0, 0.6],
+    // Azimuth -91 degrees, elevation about 42 (D-072): from the left, along the window wall's normal. At -58 (F5) the
+    // light looked as if it came through the front wall. Before F5 z was -0.45 (behind the diorama).
+    sunPosition: [-1.123, 1.0, -0.02],
     fillSkyColor: '#BFD8F0',
     fillGroundColor: '#F2E6D0',
     fillIntensity: 3.6,
