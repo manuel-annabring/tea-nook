@@ -6,7 +6,7 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 
 - **Current phase:** Phase 2 (Real shapes and AO) is done on branch `phase/2-shapes` and reviewed by a fresh-context reviewer (no blockers; its should-fix items are fixed, see `REVIEW-phase-2.md`). Phases 1 and 2 are merged into `main` (phase 2 on 2026-11-05, fast-forward, together with the reference commit `513ba57`).
 - **State:** Slice 2.0 (composition, variant A) was done with Manuel; slices 2.1 to 2.5 ran autonomously and headless (D-035). Waiting for Manuel's phase review. Phase 3 (interaction, UI, release prep) is not started.
-- **Next action:** Manuel tries the phase 2 fixes on branch `phase/2-fixes` (slices F1 to F5, G1 and G2, see "Phase 2 fixes"; evidence images are local in `review/fixes/`), says what to change, then merges them into `main`. After that: rewrite the Git history once to drop the old review images (before the first push), then the phase 3 kickoff.
+- **Next action:** The phase 2 fixes (F1 to F5, G1, G2) are merged into `main` (2026-11-05, fast-forward). Open: Manuel decides whether to rewrite the Git history once to drop the old review images (before the first push; changes all commit hashes quoted in STATUS and REVIEW), then the phase 3 kickoff.
 - **Blockers:** none. Open question for Manuel: shrink the 25 MB of committed review PNGs before the first push (needs a history rewrite, see REVIEW-phase-2.md).
 
 ## Slices
