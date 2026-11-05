@@ -17,6 +17,11 @@ their AO would be smeared and the dark crack between two floor boards would not 
 islands with a short side under `THIN_MM` are therefore scaled up before packing (`boost_thin_faces`), at most
 `BOOST_MAX` times; everything else keeps the common density.
 
+Levelling (slice G2): faces buried inside other boxes are whitened, but only those; the bake margin around visible islands is kept and the
+blur only mixes pixels of visible faces, so board tops no longer get a bright rim next to the joints. Big up-facing faces (the floor slab
+under the boards, the plinth top) are never treated as buried: the grooves between the boards open onto the slab, and a whitened slab
+made every groove bottom a bright line.
+
 All temporary things (bake image nodes, render settings, world, hidden flags) are removed or restored,
 so the final materials are unchanged. Re-runnable: an existing `UV_AO` is removed and rebuilt.
 
@@ -52,6 +57,8 @@ GAIN, GAMMA, FLOOR = 0.85, 1.0, 0.40
 WARM_G, WARM_B = 1.05, 1.18
 ROOM_MATERIALS = ["Mat_Wall", "Mat_Wood", "Mat_Frame", "Mat_Leaf", "Mat_Pot", "Mat_Tin", "Mat_Book"]
 BURIED_BELOW = 0.30  # raw AO under this is pure FLOOR after levelling; a face with no pixel above it is buried
+KEEP_PX = 2  # bake margin kept (not whitened) around visible islands; half the packing gap, so it never reaches the next island
+FLOOR_FACE_AREA = 0.5  # m2: up-facing faces bigger than this are floors and never count as buried
 ERODE_PX = BAKE_MARGIN_PX + 2  # island border ignored when deciding whether a face is buried
 HIDE_FOR_BAKE = ["Window_Glass", "Window_Sky"]
 # Thin faces (floor board edges, trim, handles, book covers) are 2 to 8 mm across, about one texel at the common density,
@@ -257,12 +264,34 @@ def level_and_save(raw, ids, png_path):
     lit = np.bincount(ids[interior], weights=(ao[interior] > BURIED_BELOW), minlength=count)  # interior pixels with real light
     total = np.bincount(ids[interior], minlength=count)
     buried = (total > 0) & (lit / np.maximum(total, 1) < 0.02)
-    hide = (ids < 0) | np.where(ids >= 0, buried[np.clip(ids, 0, None)], False)
-    ao[hide] = 1.0
+    # A big up-facing face is a floor (the slab under the boards, the plinth top), not a buried face: its interior is dark only because
+    # the boards stand on it, but the grooves between the boards open onto it. Whitened, the groove bottoms read as bright lines next
+    # to the dark side faces (slice G2). Keep its bake: the dark texels under the boards blur into the groove, which is what we want.
+    polys = bpy.data.objects["Room"].data.polygons
+    floors = np.array([p.normal.z > 0.99 and p.area > FLOOR_FACE_AREA for p in polys])
+    kept = int((buried & floors[: len(buried)]).sum())
+    buried &= ~floors[: len(buried)]
+    print(f"[05_ao_bake] big up-facing faces kept as floors (not whitened): {kept}")
+    is_buried = np.where(ids >= 0, buried[np.clip(ids, 0, None)], False)
     print(f"[05_ao_bake] fully buried faces (whitened): {int(buried.sum())} of {count}")
+    # `keep` = pixels of visible faces plus the first KEEP_PX pixels of bake margin around them (Cycles filled those with the colour of
+    # the nearest island edge). Only what is outside `keep` is whitened: if the margin were whitened too, the blur below would pull
+    # the edge of every island towards white and each board top would get a bright rim next to the dark joint (slice G2).
+    visible = (ids >= 0) & ~is_buried
+    keep = visible.copy()
+    for dy in range(-KEEP_PX, KEEP_PX + 1):
+        for dx in range(-KEEP_PX, KEEP_PX + 1):
+            keep |= np.roll(visible, (dy, dx), axis=(0, 1))
+    hide = ~keep
+    ao[hide] = 1.0
+    # Normalised blur: only pixels inside `keep` take part, so the white outside never leaks in.
+    w = keep.astype(np.float32)
     for _ in range(BLUR_PASSES):
-        p = np.pad(ao, 1, mode="edge")
-        ao = sum(p[dy : dy + TEX_SIZE, dx : dx + TEX_SIZE] for dy in range(3) for dx in range(3)) / 9.0
+        num = np.pad(ao * w, 1, mode="edge")
+        den = np.pad(w, 1, mode="edge")
+        num = sum(num[dy : dy + TEX_SIZE, dx : dx + TEX_SIZE] for dy in range(3) for dx in range(3))
+        den = sum(den[dy : dy + TEX_SIZE, dx : dx + TEX_SIZE] for dy in range(3) for dx in range(3))
+        ao = np.where(keep, num / np.maximum(den, 1e-6), 1.0)
     dark = np.clip(1.0 - ao, 0.0, 1.0)
     out_r = np.clip(1.0 - GAIN * dark**GAMMA, FLOOR, 1.0)
     out_g = np.clip(1.0 - GAIN * WARM_G * dark**GAMMA, FLOOR, 1.0)
@@ -278,7 +307,7 @@ def level_and_save(raw, ids, png_path):
         img.save()
     finally:
         bpy.data.images.remove(img)
-    visible = ~hide
+    visible = keep
     return float(out_r[visible].min()), float(out_r[visible].mean())
 
 
