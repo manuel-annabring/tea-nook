@@ -40,3 +40,6 @@ __pycache__/
 # Reference images are third-party material: kept locally, never committed
 reference/*
 !reference/.gitkeep
+
+# Evidence screenshots and previews for a review: local only, deleted after the review
+review/

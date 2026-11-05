@@ -1,14 +1,17 @@
 # Review: phase 1 (Pipeline, blockout, steam on the model)
 
+
+> Evidence images (`review/phase-1/`) were local only and are not in the repository. File names in this document are historical.
+
 Branch `phase/1-blockout`, base `main` at 651df52. Five slices, one commit each. A fresh-context reviewer found no blockers; its three should-fix items (stale STATUS, overwrite guard in `01_blockout.py`, palette drift test) are fixed in the last commit.
 
 ## 1. Try this
 
 Run `npm run dev` and open `http://localhost:5173/tea-nook/`.
 
-1. **Orbit the diorama.** Drag to orbit, scroll to zoom. Azimuth is limited to +-35 degrees, polar 55 to 80, distance 0.8 to 1.6, no panning. Look at palette, light and framing. Reference: ![hero](review/phase-1/scene-hero.jpg)
+1. **Orbit the diorama.** Drag to orbit, scroll to zoom. Azimuth is limited to +-35 degrees, polar 55 to 80, distance 0.8 to 1.6, no panning. Look at palette, light and framing. Reference:
 2. **Move the pointer through both steams.** The steam bends away from the cursor. Reference pairs: `review/phase-1/steam-pointer-tea-on.jpg` / `-off.jpg` and `steam-pointer-kettle-on.jpg` / `-off.jpg`.
-3. **Compare tea and kettle steam.** Same shader, kettle is 1.4 times as dense and 1.5 times as tall. It leaves the top of the hero frame. Is that too much? ![steam hero](review/phase-1/steam-hero.jpg)
+3. **Compare tea and kettle steam.** Same shader, kettle is 1.4 times as dense and 1.5 times as tall. It leaves the top of the hero frame. Is that too much?
 4. **Open the Leva panel (top-right).** Each steam has its own folders. Change a value and watch it live. Add `?panel=0` to hide the panel.
 5. **Try the camera presets** `?cam=front`, `?cam=side`, `?cam=top` (dev only; `side` and `top` are outside the orbit limits on purpose). Look from the top: the steam collapses into a smear (known limit).
 6. **Look at the blockout previews** `review/phase-1/blockout-{iso,front,side,top}.png` and ask whether the proportions work as a base for phase 2.

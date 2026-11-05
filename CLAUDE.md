@@ -38,7 +38,7 @@ Project-specific details (added on top of the block above; the block itself is c
 - Check plan usage with `mcp__ccd_session_mgmt__get_usage` (5-hour window "percentUsed" and "resetsAt"). Stop at a clean boundary at 80% or more (a slice can use a lot of that window, so do not start a slice you expect to run past it).
 - Each phase table in SPEC.md has a model and effort per slice. Start the slice's subagent with that model (Agent `model`) and effort (Agent `effort`).
 - Every worker brief points to "Code rules", "Shader rules" and "Blender and model rules" in this file, and lists the SPEC.md acceptance criteria verbatim.
-- Evidence rule: a slice is accepted only with command output or a screenshot per criterion. Screenshots are taken in the built-in browser pane at 1280 x 720 (`resize_window`) after the `data-nook-ready` flag is set (see SPEC.md slice 1.1).
+- Evidence rule: a slice is accepted only with command output or a screenshot per criterion. Evidence images stay local in `review/phase-N/` (git-ignored): never commit them, and refer to them in STATUS.md and REVIEW files by file name only, without embedding. Screenshots are taken in the built-in browser pane at 1280 x 720 (`resize_window`) after the `data-nook-ready` flag is set (see SPEC.md slice 1.1).
 - Notification (`PushNotification`) only at the four stop conditions, one line, leading with what Manuel must do.
 - Keep tweakable look values (palette, light presets, camera defaults, tea values, steam defaults) in `src/config/look.ts` and the files it re-exports, never inline in components.
 
@@ -115,7 +115,7 @@ WORKFLOW.md         the phase workflow (process, templates)
 STATUS.md           current phase, slice table, next action, blockers, notes
 DECISIONS.md        decision log
 REVIEW-phase-N.md   review package per phase (written by Claude at phase end)
-review/phase-N/     evidence screenshots and previews for the review package (committed PNGs)
+review/phase-N/     evidence screenshots and previews for the review package (git-ignored, never committed; Manuel deletes them after the review)
 reference/          mood board images (not shipped)
 public/models/      nook.glb
 src/

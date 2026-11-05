@@ -236,7 +236,7 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 
 - "Base checks" means `npm run typecheck`, `npm run lint`, `npm test` and `npm run build` all pass.
 - "Console clean" means no console errors and no warnings except the known noise listed in `CLAUDE.md` (`THREE.Clock` deprecation).
-- Screenshots are taken in the built-in browser pane at 1280 x 720 after the ready flag is set (slice 1.1), with the dev panel hidden (`?panel=0`). Evidence images are saved to `review/phase-N/` and committed.
+- Screenshots are taken in the built-in browser pane at 1280 x 720 after the ready flag is set (slice 1.1), with the dev panel hidden (`?panel=0`). Evidence images are saved to `review/phase-N/`, which is git-ignored: they stay local and are deleted after the review.
 - Look values live in `src/config/look.ts` (slice 1.1). A slice that needs a new tweakable value adds it there.
 - Any change to section 5 (the model contract) is a stop. Slices that need one say so up front.
 

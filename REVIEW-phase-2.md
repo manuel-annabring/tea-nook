@@ -1,13 +1,16 @@
 # Review: phase 2 (Real shapes and AO)
 
+
+> Evidence images (`review/phase-2/`) were local only and are not in the repository. File names in this document are historical.
+
 Branch `phase/2-shapes`. Slice 2.0 (composition) was done together with Manuel; slices 2.1 to 2.5 ran autonomously and headless (D-035). One commit per slice. A fresh-context reviewer found no blockers; its should-fix items are fixed in the last commit. The phase branch is not merged into `main` yet.
 
 ## 1. Try this
 
 Run `npm run dev` and open the URL it prints (add `/tea-nook/` if it is not already there).
 
-1. **Orbit and look at the whole scene.** Azimuth 0 to 40 degrees (the window wall would hide the cabinet from the other side), polar 55 to 80, distance 1.8 to 3.2, no panning. Is this the nook you wanted? ![hero](review/phase-2/light-hero.jpg)
-2. **Look at the light.** The sun comes through the left-wall window and lands on the worktop and the floor, with the window cross in the shadow. Compare `?shadow=off` (baked AO only) with the default (one live shadow). ![before and after](review/phase-2/light-noshadow-hero.jpg)
+1. **Orbit and look at the whole scene.** Azimuth 0 to 40 degrees (the window wall would hide the cabinet from the other side), polar 55 to 80, distance 1.8 to 3.2, no panning. Is this the nook you wanted?
+2. **Look at the light.** The sun comes through the left-wall window and lands on the worktop and the floor, with the window cross in the shadow. Compare `?shadow=off` (baked AO only) with the default (one live shadow).
 3. **Look at the mug and the kettle up close.** `review/phase-2/mug-close-a.png`, `mug-close-b.png`, `kettle-close-a.png`, `kettle-close-b.png`. Reference 01 is the target: soft, round, thick handle.
 4. **Look at the details.** Window with four panes and sill, cabinet doors with handles, floor boards, baseboards, plant, tin, books: `room-close-*.png`.
 5. **Look at the AO.** `ao-on-hero.jpg` against `ao-off-hero.jpg`, and `ao-diff-hero.png` (the difference times 8). Contact shadows under props, cabinet and plant, and in the corners.
@@ -73,7 +76,7 @@ Plus `513ba57` (reference set, made in a separate chat on `spec/visual-reference
 
 - **Not verified on real hardware:** frame times are a proxy (the hidden browser pane runs `requestAnimationFrame` at 1 Hz, so the worker measured with back-to-back renders and a pixel read). Orbit and pointer were tested with synthetic events. Your laptop and the 4x CPU throttle check are still open (slice 3.3).
 - **Looks weak, your call:** the plant is spiky like an agave; the steam reads fainter against the brighter wall; the shaded floor is a dark brown and the sun patch is small at hero distance; the cabinet side has no detail; at hero distance the books, handles and tin lid are tiny; the mug has a hard belly crease; the kettle is slimmer than in reference 01 (the contract fixes height and radius).
-- **Repository size:** `review/phase-2` is about 26 MB (29 Workbench PNGs of 0.6 to 1.1 MB). The repo is about 31 MB. Shrinking it only helps if the history is rewritten before the first push (destructive, so not done). Recommendation: convert the PNGs to JPEG, rewrite the history once before adding a remote. Your decision.
+- **Repository size:** the review images are removed from the working tree, but they stay in the Git history (about 26 MB) until the history is rewritten once before the first push (planned after the phase 2 fixes).
 - **Tone mapping change** (D-050) and the shadow default are outside what you asked for; both are one value in `look.ts`.
 - **Phase 3 hints:** the shadow frustum is fitted to the morning sun and must be refitted for the evening preset; `Mat_Tea` colour must be damped on the cached material by name; the steam meshes need `raycast={() => null}` before the Mug click handler is added (see STATUS notes).
 - **Notification:** push notifications reached your phone only if you saw one; the earlier test was suppressed while the app was active.
