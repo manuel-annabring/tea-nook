@@ -60,23 +60,23 @@ Budgets: 2940 triangles (target 30k), GLB 211 KB (limit 3 MB), AO texture 312 KB
 ## 5. History
 
 ```
-85a02f4 Slice 2.5: lighting, shadows decision, camera tuning
-aee749c Slice 2.4: AO bake pipeline
-44bf459 Slice 2.3: room details
-13eaee6 Slice 2.2: kettle
-4a7c19b Slice 2.1: mug and tea surface
-4a12ce5 Add close-up render script and mug close-ups
-ec2a4b2 Phase 2 runs autonomously from slice 2.1; pre-approve the UV_AO amendment
-85fb7b3 Slice 2.0: composition, variant A (counter in the corner)
+b2119d3 Slice 2.5: lighting, shadows decision, camera tuning
+a2142fb Slice 2.4: AO bake pipeline
+e10b7d6 Slice 2.3: room details
+363f480 Slice 2.2: kettle
+c6317fc Slice 2.1: mug and tea surface
+8c237ff Add close-up render script and mug close-ups
+5429519 Phase 2 runs autonomously from slice 2.1; pre-approve the UV_AO amendment
+e8f3ada Slice 2.0: composition, variant A (counter in the corner)
 ```
 
-Plus `513ba57` (reference set, made in a separate chat on `spec/visual-references`, already in this branch's history) and the review-fix commit. Any slice can be reverted alone, with the dependency order 2.0 to 2.5 in mind.
+Plus `e9a7fe1` (reference set, made in a separate chat on `spec/visual-references`, already in this branch's history) and the review-fix commit. Any slice can be reverted alone, with the dependency order 2.0 to 2.5 in mind.
 
 ## 6. Open issues
 
 - **Not verified on real hardware:** frame times are a proxy (the hidden browser pane runs `requestAnimationFrame` at 1 Hz, so the worker measured with back-to-back renders and a pixel read). Orbit and pointer were tested with synthetic events. Your laptop and the 4x CPU throttle check are still open (slice 3.3).
 - **Looks weak, your call:** the plant is spiky like an agave; the steam reads fainter against the brighter wall; the shaded floor is a dark brown and the sun patch is small at hero distance; the cabinet side has no detail; at hero distance the books, handles and tin lid are tiny; the mug has a hard belly crease; the kettle is slimmer than in reference 01 (the contract fixes height and radius).
-- **Repository size:** the review images are removed from the working tree, but they stay in the Git history (about 26 MB) until the history is rewritten once before the first push (planned after the phase 2 fixes).
+- **Repository size:** the review images were removed from the working tree and, on 2026-11-05, from the whole Git history (rewrite with `git filter-branch`, repository now about 2 MB). Commit hashes quoted in this file and in STATUS.md are the new ones. The backup of the old history is the bundle `tea-nook-before-rewrite.bundle` next to the project folder.
 - **Tone mapping change** (D-050) and the shadow default are outside what you asked for; both are one value in `look.ts`.
 - **Phase 3 hints:** the shadow frustum is fitted to the morning sun and must be refitted for the evening preset; `Mat_Tea` colour must be damped on the cached material by name; the steam meshes need `raycast={() => null}` before the Mug click handler is added (see STATUS notes).
 - **Notification:** push notifications reached your phone only if you saw one; the earlier test was suppressed while the app was active.

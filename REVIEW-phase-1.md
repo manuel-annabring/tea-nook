@@ -52,11 +52,11 @@ Budgets (section 5): GLB 49.7 KB of 3 MB, 724 triangles of 30k target, 13 of 14 
 ## 4. History
 
 ```
-ef31941 Slice 1.5: steam on the model
-e860004 Slice 1.4: scene with model, lights and camera
-f562005 Slice 1.3: scripted blockout
-8c25206 Slice 1.2: Blender pipeline scripts
-f98f751 Slice 1.1: look config and verification harness
+404343f Slice 1.5: steam on the model
+8bdabce Slice 1.4: scene with model, lights and camera
+7d02510 Slice 1.3: scripted blockout
+b0fb326 Slice 1.2: Blender pipeline scripts
+c9dfa76 Slice 1.1: look config and verification harness
 ```
 
 Plus the review-fix commit. Any slice can be reverted alone (1.4 and 1.5 depend on 1.1 to 1.3).
