@@ -4,9 +4,9 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 
 ## Now
 
-- **Current phase:** Phase 2 (Real shapes and AO) is done on branch `phase/2-shapes` and reviewed by a fresh-context reviewer (no blockers; its should-fix items are fixed, see `REVIEW-phase-2.md`). Phase 1 is merged into `main`; phase 2 and the reference commit `513ba57` are not merged yet.
+- **Current phase:** Phase 2 (Real shapes and AO) is done on branch `phase/2-shapes` and reviewed by a fresh-context reviewer (no blockers; its should-fix items are fixed, see `REVIEW-phase-2.md`). Phases 1 and 2 are merged into `main` (phase 2 on 2026-11-05, fast-forward, together with the reference commit `513ba57`).
 - **State:** Slice 2.0 (composition, variant A) was done with Manuel; slices 2.1 to 2.5 ran autonomously and headless (D-035). Waiting for Manuel's phase review. Phase 3 (interaction, UI, release prep) is not started.
-- **Next action:** Manuel tries phase 2 (`npm run dev`, `REVIEW-phase-2.md` "Try this"), says what to change (small fix slices), then merges `phase/2-shapes` into `main`. Then phase 3 runs autonomously.
+- **Next action:** Manuel's change requests for phase 2 (small fix slices, if any), then the phase 3 kickoff. Phase 3 runs autonomously.
 - **Blockers:** none. Open question for Manuel: shrink the 25 MB of committed review PNGs before the first push (needs a history rewrite, see REVIEW-phase-2.md).
 
 ## Slices
