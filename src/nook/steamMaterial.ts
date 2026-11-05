@@ -15,7 +15,7 @@ import {
 } from 'three'
 import { generatePerlinTexture } from '../lib/perlin.ts'
 import { steamFragmentShader, steamVertexShader } from '../shaders/steam.ts'
-import type { SteamLook } from './steamDefaults.ts'
+import type { SteamLook, SteamNoise } from './steamDefaults.ts'
 
 const NOISE_SIZE = 128
 
@@ -35,6 +35,9 @@ export interface SteamUniforms {
   uFadeIn: IUniform<number>
   uFadeOut: IUniform<number>
   uWind: IUniform<number>
+  /** Width multiplier at the opening and the power of the curve towards the top (see `steamWidth`). */
+  uWidthBase: IUniform<number>
+  uWidthPower: IUniform<number>
   uFacing: IUniform<number>
   /** World position of the pointer on the steam plane. */
   uPointer: IUniform<Vector3>
@@ -49,9 +52,9 @@ export interface SteamUniforms {
 export type SteamMaterial = ShaderMaterial & { uniforms: SteamUniforms }
 
 /** Tileable two-channel Perlin texture (R: twist, G: alpha mask). The caller disposes it. */
-export function createNoiseTexture(): DataTexture {
+export function createNoiseTexture(noise: SteamNoise): DataTexture {
   const texture = new DataTexture(
-    generatePerlinTexture({ size: NOISE_SIZE, cells: 4, octaves: 2, seed: 7 }),
+    generatePerlinTexture({ size: NOISE_SIZE, ...noise }),
     NOISE_SIZE,
     NOISE_SIZE,
     RGBAFormat,
@@ -88,6 +91,8 @@ export function createSteamMaterial(noise: DataTexture): SteamMaterial {
     uFadeIn: { value: 0.15 },
     uFadeOut: { value: 0.55 },
     uWind: { value: 0 },
+    uWidthBase: { value: 1 },
+    uWidthPower: { value: 1 },
     uFacing: { value: 0 },
     uPointer: { value: new Vector3() },
     uPointerRadius: { value: 0.07 },
@@ -118,6 +123,8 @@ export function applyLook(material: SteamMaterial, look: SteamLook): void {
   u.uNoiseScale.value.set(look.noiseScaleX, look.noiseScaleY)
   u.uCut.value.set(look.cutLow, look.cutHigh)
   u.uWind.value = look.wind
+  u.uWidthBase.value = look.widthBase
+  u.uWidthPower.value = look.widthPower
   u.uFacing.value = look.facing
   u.uTwistMax.value = shape.twistMax
   u.uTwistPower.value = shape.twistPower

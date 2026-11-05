@@ -4,6 +4,8 @@ uniform float uHeight;
 uniform float uTwistMax;
 uniform float uTwistPower;
 uniform float uWind;
+uniform float uWidthBase;
+uniform float uWidthPower;
 uniform vec3 uPointer;
 uniform float uPointerRadius;
 uniform float uPointerStrength;
@@ -23,6 +25,8 @@ void main() {
   // Geometry is 1 unit tall (y from 0 to 1); scale it to the steam height in meters.
   vec3 p = position;
   p.y *= uHeight;
+  // Width profile: narrow at the opening, full width at the top. Scaling local x leaves the plane normal unchanged.
+  p.x *= steamWidth(h, uWidthBase, uWidthPower);
 
   // Cylindrical billboard: turn the plane's local x/z axes to face the camera around Y.
   vec3 origin = modelMatrix[3].xyz;

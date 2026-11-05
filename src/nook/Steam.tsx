@@ -18,7 +18,9 @@ interface SteamProps {
 export function Steam({ slot, anchor }: SteamProps) {
   const look = useStore((s) => s.steamLooks[slot])
   const mesh = useRef<Mesh>(null)
-  const noise = useMemo(() => createNoiseTexture(), [])
+  // Noise parameters come from the look and are not live-tweakable, so the texture is built once per distinct block.
+  const noiseParams = useStore.getState().steamLooks[slot].noise
+  const noise = useMemo(() => createNoiseTexture(noiseParams), [noiseParams])
   const material = useMemo(() => createSteamMaterial(noise), [noise])
   const geometry = useMemo(() => createSteamGeometry(look.radius), [look.radius])
   const speed = useRef(look.speed)

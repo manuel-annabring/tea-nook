@@ -35,6 +35,12 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 | 4.1 to 4.3 | Extras: light (outline) | autonomous | todo | | Refine after phase 3 |
 | 5.1 to 5.3 | Extras: audio, mobile, final (outline) | autonomous | todo | | Refine after phase 4 |
 
+## Phase 2 fixes
+
+| # | Fix | Status | Evidence |
+|---|-----|--------|----------|
+| F2 | Differentiate tea and kettle steam | done | D-054 to D-057. Noise: tea seed 7 / cells 4 / octaves 2, kettle seed 23 / cells 3 / octaves 3. Tea radius 0.05 -> 0.04, height 0.23 -> 0.18, noiseScaleY 1.55 -> 1.0, widthBase 0.8 / power 1. Kettle radius 0.055, height 0.345 (unchanged), widthBase 0.22 / power 1.3, noiseScaleY 0.8: half width 0.012 m (14 px at 1280 x 720, closest zoom) at the spout and 0.055 m (68 px) at the top; tea 0.032 m (39 px) to 0.04 m (51 px). Pointer: blend 1.0 tea, 0.86 kettle after synthetic moves. Markers: mesh base equals marker world position for both. typecheck, lint, 33 tests, build pass; `grep -r "__nook" dist` empty; console only the THREE.Clock warning. Images (git-ignored): `review/fixes/f2-hero-default.jpg`, `f2-hero-closest.jpg`, `f2-steam-pair-crop.png` |
+
 ## Verified baseline (2026-11-05, `phase/2-shapes`)
 
 `npm run typecheck`, `lint`, `test` (30 tests) and `build` pass; contract check on `nook.blend` passes (2940 triangles); GLB 211 KB, `room_ao.png` 312 KB, 27 draw calls with the live shadow. The built-in browser pane shows the finished scene with both steams; console shows only the known `THREE.Clock` warning.

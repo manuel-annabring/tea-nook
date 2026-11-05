@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { heightFade, pointerFalloff, pointerPush, smoothstep, STEAM_DEFAULTS, twistAngle } from './steamMath.ts'
+import { heightFade, pointerFalloff, pointerPush, smoothstep, STEAM_DEFAULTS, steamWidth, twistAngle } from './steamMath.ts'
 
 describe('smoothstep', () => {
   it('clamps and is smooth at the midpoint', () => {
@@ -47,5 +47,27 @@ describe('pointer push', () => {
 
   it('does nothing outside the radius', () => {
     expect(pointerPush(0.1, 1, STEAM_DEFAULTS)).toBe(0)
+  })
+})
+
+describe('steamWidth', () => {
+  it('is base at the opening and 1 at the top', () => {
+    expect(steamWidth(0, 0.2, 1.3)).toBeCloseTo(0.2)
+    expect(steamWidth(1, 0.2, 1.3)).toBeCloseTo(1)
+  })
+
+  it('grows monotonically and clamps outside 0..1', () => {
+    let prev = -1
+    for (let i = 0; i <= 20; i++) {
+      const w = steamWidth(i / 20, 0.2, 1.3)
+      expect(w).toBeGreaterThan(prev)
+      prev = w
+    }
+    expect(steamWidth(-1, 0.3, 2)).toBeCloseTo(0.3)
+    expect(steamWidth(2, 0.3, 2)).toBeCloseTo(1)
+  })
+
+  it('stays narrower than linear for power > 1', () => {
+    expect(steamWidth(0.5, 0.2, 2)).toBeLessThan(steamWidth(0.5, 0.2, 1))
   })
 })

@@ -2,7 +2,7 @@
 // Colors are sRGB hex. Palette keys are the contract material names (SPEC section 5).
 
 export { TEAS, type Tea } from '../lib/teas.ts'
-export { STEAM_LOOK_DEFAULTS, KETTLE_STEAM_LOOK, KETTLE_STEAM_DENSITY_FACTOR, KETTLE_STEAM_HEIGHT_FACTOR, type SteamLook } from '../nook/steamDefaults.ts'
+export { STEAM_LOOK_DEFAULTS, KETTLE_STEAM_LOOK, KETTLE_STEAM_DENSITY_FACTOR, KETTLE_STEAM_HEIGHT_FACTOR, type SteamLook, type SteamNoise } from '../nook/steamDefaults.ts'
 export { STEAM_DEFAULTS, type SteamParams } from '../lib/steamMath.ts'
 
 /** Material color by contract material name. SPEC section 3 for the six main ones; the rest are placeholders until the references arrive. */

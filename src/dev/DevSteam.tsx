@@ -12,6 +12,8 @@ function useSteamControls(slot: SteamSlot, title: string, D: SteamLook) {
     speed: { value: D.speed, min: 0, max: 3, step: 0.01 },
     height: { value: D.height, min: 0.1, max: 0.6, step: 0.005 },
     radius: { value: D.radius, min: 0.01, max: 0.08, step: 0.001 },
+    widthBase: { value: D.widthBase, min: 0.05, max: 1, step: 0.01 },
+    widthPower: { value: D.widthPower, min: 0.3, max: 4, step: 0.05 },
   })
   const noise = useControls(`${title} / Noise`, {
     scaleAround: { value: D.noiseScaleX, min: 0.25, max: 4, step: 0.25 },
@@ -34,13 +36,16 @@ function useSteamControls(slot: SteamSlot, title: string, D: SteamLook) {
     anchor: { value: D.shape.pointerAnchor, min: 0.01, max: 1, step: 0.01 },
   })
 
-  const { color, density, speed, height, radius } = steam
+  const { color, density, speed, height, radius, widthBase, widthPower } = steam
   const { scaleAround, scaleAlong, cutLow, cutHigh, wind, facing } = noise
   const { twistMax, twistPower, fadeIn, fadeOut } = shape
 
   useEffect(() => {
     const look: SteamLook = {
       radius,
+      widthBase,
+      widthPower,
+      noise: D.noise,
       height,
       color,
       density,
@@ -63,7 +68,7 @@ function useSteamControls(slot: SteamSlot, title: string, D: SteamLook) {
       },
     }
     useStore.getState().setSteamLook(slot, look)
-  }, [slot, radius, height, color, density, speed, scaleAround, scaleAlong, cutLow, cutHigh, wind, facing, twistMax, twistPower, fadeIn, fadeOut, pointer.radius, pointer.strength, pointer.power, pointer.anchor])
+  }, [slot, D.noise, radius, widthBase, widthPower, height, color, density, speed, scaleAround, scaleAlong, cutLow, cutHigh, wind, facing, twistMax, twistPower, fadeIn, fadeOut, pointer.radius, pointer.strength, pointer.power, pointer.anchor])
 }
 
 /** Dev-only tweak panel for both steams. Loaded lazily under import.meta.env.DEV, so it is not in the production bundle. */

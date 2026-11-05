@@ -42,6 +42,15 @@ export function smoothstep(edge0: number, edge1: number, x: number): number {
   return t * t * (3 - 2 * t)
 }
 
+/**
+ * Width multiplier at height `h`: `base` at the opening (h = 0), 1 at the top (h = 1).
+ * `power` above 1 keeps the column narrow for longer, then opens up near the top.
+ * A power curve was chosen over smoothstep: one parameter, and it is easy to mirror in GLSL.
+ */
+export function steamWidth(h: number, base: number, power: number): number {
+  return base + (1 - base) * Math.pow(Math.min(1, Math.max(0, h)), power)
+}
+
 /** Swirl angle at height `h`. */
 export function twistAngle(h: number, twistMax: number, twistPower: number): number {
   return twistMax * Math.pow(Math.min(1, Math.max(0, h)), twistPower)

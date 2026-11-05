@@ -65,6 +65,8 @@ interface SteamUniformValues {
   uPhase: number
   uColor: string
   uWind: number
+  uWidthBase: number
+  uWidthPower: number
   /** True when the material is a `ShaderMaterial` created by `createSteamMaterial` (uniform objects on userData). */
   fromFactory: boolean
 }
@@ -289,6 +291,8 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
         uPhase: u.uPhase.value,
         uColor: u.uColor.value.getHexString(),
         uWind: u.uWind.value,
+        uWidthBase: u.uWidthBase.value,
+        uWidthPower: u.uWidthPower.value,
         fromFactory: u === (material as ShaderMaterial).uniforms,
       }
     },

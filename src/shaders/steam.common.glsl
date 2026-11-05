@@ -4,6 +4,10 @@ float twistAngle(float h, float twistMax, float twistPower) {
   return twistMax * pow(clamp(h, 0.0, 1.0), twistPower);
 }
 
+float steamWidth(float h, float base, float power) {
+  return base + (1.0 - base) * pow(clamp(h, 0.0, 1.0), power);
+}
+
 float heightFade(float h, float fadeIn, float fadeOut) {
   return smoothstep(0.0, fadeIn, h) * (1.0 - smoothstep(fadeOut, 1.0, h));
 }
