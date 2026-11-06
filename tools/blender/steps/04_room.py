@@ -278,7 +278,24 @@ LEAF_LEN, LEAF_WIDTH, LEAF_GAP, LEAF_STEM, LEAF_STEM_W, LEAF_TILT_DEG = 0.066, 0
 LEAF_STATIONS = (0.14, 0.30, 0.46, 0.62, 0.78, 0.91)  # blade outline stations along the length (fractions)
 HEART_WIDTH, HEART_POINTS = 0.048, 16
 # ---- Slice D3: tea box body (layout in tools/blender/tea_layout.py; SPEC.md section 7 layout table "Tea box") ----------------
-SAUCER_R = 0.055  # planned saucer radius around the mug (slice D4)
+SAUCER_R = 0.055  # saucer radius around the mug axis (slice D4; the planned value of the D3 gap check, now built)
+# Slice D4: saucer under the teacup, `Mat_Frame`, a lathe of (radius, z) points around the mug axis (read from the `Mug` object).
+# 8 mm high with a shallow well: the well floor is 1.3 mm above the worktop and the cup foot (underside at z 0) pokes 1.3 mm into it,
+# so the cup does not move and nothing is coplanar (no z-fighting between the cup base and the saucer).
+SAUCER_PROFILE = [
+    (0.0000, 0.0000),  # underside centre, resting on the worktop top
+    (0.0440, 0.0000),
+    (0.0525, 0.0035),  # outer slope
+    (0.0550, 0.0062),  # rim, outer edge (largest radius = SAUCER_R)
+    (0.0540, 0.0080),  # rim top
+    (0.0515, 0.0080),
+    (0.0420, 0.0045),  # inner slope down to the well
+    (0.0300, 0.0022),
+    (0.0265, 0.0013),  # well edge; the cup foot (radius 0.023 to 0.026 at its bevel) sits inside
+    (0.0000, 0.0013),  # well floor centre
+]
+SAUCER_SIDES = 20
+SAUCER_SHARP_DEG = 50.0  # same angle rule as 06_smooth_shading.py: the rim edges stay crisp, the slopes are smooth
 TEA_BOX_GAP_MIN = 0.020  # box to mug, planned saucer, kettle and tin: at least 20 mm
 BOX_TOL = 0.005  # a new part's bounding box must match the layout table within 5 mm
 CLEARANCE_MIN = 0.015  # plan-view distance of every new part to a steam column
@@ -316,11 +333,20 @@ class Shading:
     smooth = []  # faces of organic parts
     sharp = set()  # edges kept sharp (the ring where a tube end cap meets the tube)
     pots = []  # pot and bowl faces: smooth only when SMOOTH_POTS
+    angle_faces = []  # slice D4: faces shaded smooth with sharp edges by angle (the saucer), like 06_smooth_shading.py for Mug and Kettle
 
 
 def apply_shading(bm):
     for f in Shading.smooth:
         f.smooth = True
+    limit_angle = math.radians(SAUCER_SHARP_DEG)
+    angle_set = set(Shading.angle_faces)
+    for f in Shading.angle_faces:
+        f.smooth = True
+    for f in Shading.angle_faces:
+        for e in f.edges:
+            if len(e.link_faces) != 2 or e.calc_face_angle(0.0) > limit_angle or any(g not in angle_set for g in e.link_faces):
+                e.smooth = False
     for e in Shading.sharp:
         e.smooth = False  # BMEdge.smooth False = marked sharp
     if SMOOTH_POTS:
@@ -1004,6 +1030,21 @@ def build_tea_box(bm):
     tracked(bm, "tea_box", body)
 
 
+def saucer_axis():
+    """Plan-view position of the mug axis, read from the `Mug` object (never hard-coded)."""
+    mug = bpy.data.objects["Mug"].location
+    return mug.x, mug.y
+
+
+def build_saucer(bm):
+    """Slice D4: the saucer under the teacup, one lathe in Mat_Frame (see SAUCER_PROFILE). Shaded smooth with sharp edges by angle."""
+    mx, my = saucer_axis()
+    assert abs(max(r for r, _z in SAUCER_PROFILE) - SAUCER_R) < 1e-9, "SAUCER_R and SAUCER_PROFILE disagree"
+    faces = []
+    tracked(bm, "saucer", lambda: faces.extend(lathe(bm, SAUCER_PROFILE, (mx, my, 0.0), IDX["Mat_Frame"], SAUCER_SIDES)))
+    Shading.angle_faces.extend(faces)
+
+
 def expected_boxes():
     """Layout table (SPEC.md section 7, phase 2b) as lower/upper corners per part name."""
     out = {}
@@ -1023,6 +1064,8 @@ def expected_boxes():
     for name, ((x0, x1), (z0, z1), _p, _m) in FRAMES.items():
         out[f"frame_{name}"] = ((x0, WALL_FACE - FRAME_DEPTH, z0), (x1, WALL_FACE, z1))
     bx, by = tea.BOX_CENTER
+    mx, my = saucer_axis()
+    out["saucer"] = ((mx - SAUCER_R, my - SAUCER_R, 0.0), (mx + SAUCER_R, my + SAUCER_R, 0.006))  # layout table: about 0.006 high
     out["tea_box"] = ((bx - tea.BOX_SIZE[0] / 2, by - tea.BOX_SIZE[1] / 2, 0.0), (bx + tea.BOX_SIZE[0] / 2, by + tea.BOX_SIZE[1] / 2, tea.BOX_SIZE[2]))
     return out
 
@@ -1103,6 +1146,93 @@ def check_tea_box(bm):
         assert ok, f"TeaBag_{i} does not fit its slot"
 
 
+def object_world_box(ob):
+    """World bounding box of an object and its children as (lo, hi) vectors."""
+    corners = [ob.matrix_world @ Vector(c) for c in ob.bound_box]
+    for child in ob.children_recursive:
+        corners += [child.matrix_world @ Vector(c) for c in child.bound_box]
+    return (Vector((min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners))),
+            Vector((max(c.x for c in corners), max(c.y for c in corners), max(c.z for c in corners))))
+
+
+def saucer_top(r):
+    """Height of the saucer surface at radius r (inner side of the profile, up to the rim top)."""
+    inner = [(rr, z) for rr, z in SAUCER_PROFILE[5:]][::-1]  # from the well centre outwards: (0, 0.0013) ... (0.0515, 0.0080)
+    inner = [(0.0, SAUCER_PROFILE[-1][1])] + [pt for pt in inner if pt[0] > 0] + [SAUCER_PROFILE[4]]
+    inner.sort()
+    for (r0, z0), (r1, z1) in zip(inner, inner[1:]):
+        if r0 <= r <= r1:
+            return z0 + (z1 - z0) * (r - r0) / (r1 - r0)
+    return SAUCER_PROFILE[4][1]  # on the rim top
+
+
+def check_saucer(bm):
+    """Slice D4: the saucer sits under the teacup without moving it, and touches no other part. Prints the foot intrusion, the
+    closest cup vertex above the surface, the handle reach and the plan-view gap to every other part and object."""
+    mx, my = saucer_axis()
+    mug = bpy.data.objects["Mug"]
+    assert abs(mug.location.z) < 1e-9, "the Mug moved: it must rest at z 0"
+    well = SAUCER_PROFILE[-1][1]
+    print(f"[04_room] D4 saucer: radius {SAUCER_R * 1000:.0f} mm, {max(z for _r, z in SAUCER_PROFILE) * 1000:.1f} mm high, well floor {well * 1000:.1f} mm above the worktop; the cup base (z 0) is {well * 1000:.1f} mm below it, "
+          f"so the foot is buried, not coplanar")
+    assert 0.0005 <= well <= 0.003, "well floor must be 0.5 to 3 mm above the worktop (cup foot buried, no coplanar faces)"
+    worst, handle = 1e9, 0.0
+    for v in mug.data.vertices:
+        w = mug.matrix_world @ v.co
+        r = math.hypot(w.x - mx, w.y - my)
+        handle = max(handle, r)
+        if w.z > 1e-6 and r <= SAUCER_R:
+            worst = min(worst, w.z - saucer_top(r))
+    print(f"  cup vertices above the saucer surface: smallest height {worst * 1000:.2f} mm (negative would be a collision); farthest cup point from the axis {handle * 1000:.1f} mm (limit 80)")
+    assert worst > 0.0005, "a cup vertex dips into the saucer (other than the buried foot underside)"
+    assert handle <= 0.080, "the cup handle reaches further than 80 mm from the axis"
+    # Gap in plan view and in 3D to every other part (Room parts by vertex range, the kettle and the tea bags as objects).
+    bm.verts.ensure_lookup_table()
+
+    def box_of(rng):
+        pts = [bm.verts[k].co for k in range(*rng)]
+        return (Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts))), Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts))))
+
+    gaps_vertex = {}
+    slo, shi = box_of(Parts.ranges["saucer"])
+    others = {n: box_of(r) for n, r in Parts.ranges.items() if n != "saucer"}
+    for n, (va, vb) in Parts.others.items():  # older merged groups (tin and books together span a big box): vertex distance to the saucer circle
+        pts = [bm.verts[k].co for k in range(va, vb)]
+        circle_gap = min(math.hypot(q.x - mx, q.y - my) for q in pts) - SAUCER_R
+        gaps_vertex[n] = circle_gap
+    for oname in ["Kettle"] + [f"TeaBag_{i}" for i in range(4)]:
+        ob = bpy.data.objects.get(oname)
+        if ob is not None:
+            others[oname] = object_world_box(ob)
+    gaps = {n: max(max(olo[k] - shi[k], slo[k] - ohi[k]) for k in (0, 1)) for n, (olo, ohi) in others.items()}
+    gaps.update(gaps_vertex)
+    nearest = min(gaps.items(), key=lambda kv: kv[1])
+    print(f"  saucer to every other part (plan view, boxes): nearest {nearest[0]} {nearest[1] * 1000:.1f} mm; "
+          + ", ".join(f"{n} {gaps[n] * 1000:.0f}" for n in ("tea_box", "Kettle", "tin_books", "plant") if n in gaps) + " mm")
+    assert nearest[1] > 0.0, f"the saucer touches {nearest[0]}"
+    assert slo.x >= -0.30 and shi.x <= 0.30 and slo.y >= -COUNTER_Y / 2 and shi.y <= COUNTER_Y / 2, "the saucer leaves the worktop"
+
+
+def check_prop_footprints(bm):
+    """Slice 2.3 rule, now a check: no Room vertex above the worktop (z > 0.5 mm) inside the plan-view bounding box of the Mug
+    or the Kettle. The one exception (slice D4) is the saucer, which stands under the mug on purpose and is at most 8 mm high."""
+    bm.verts.ensure_lookup_table()
+    a, b = Parts.ranges["saucer"]
+    saucer_h = max(z for _r, z in SAUCER_PROFILE)
+    bad, allowed = [], 0
+    for name in ("Mug", "Kettle"):
+        lo, hi = object_world_box(bpy.data.objects[name])
+        for k, v in enumerate(bm.verts):
+            p = v.co
+            if p.z > 0.0005 and lo.x < p.x < hi.x and lo.y < p.y < hi.y:
+                if name == "Mug" and a <= k < b and p.z <= saucer_h + 1e-9:
+                    allowed += 1
+                else:
+                    bad.append((name, k, tuple(round(c, 4) for c in p)))
+    print(f"[04_room] footprint rule: Room vertices above the worktop inside the Mug or Kettle plan boxes: {len(bad)} (plus {allowed} saucer vertices, the documented exception)")
+    assert not bad, f"Room vertices inside a prop footprint: {bad[:5]}"
+
+
 def steam_columns():
     """The two steam columns as (name, axis x, axis y, base z, height, radius, width base, width power), with the steam numbers read
     from src/nook/steamDefaults.ts and checked against the width formula in src/lib/steamMath.ts, so they cannot drift silently.
@@ -1166,6 +1296,8 @@ def check_clearance(bm):
                     p = a + (b - a) * (i / n) + (c - a) * (j / n)
                     for col in cols:
                         cname, cx, cy, cz, height, radius, wb, wp = col
+                        if p.z < cz:  # steam only exists above its marker: a saucer 8 mm high under a rim at z 0.09 is not in the column
+                            continue
                         r = radius * steam_width((p.z - cz) / height, wb, wp)
                         d = math.hypot(p.x - cx, p.y - cy) - r
                         key = (name, cname)
@@ -1176,7 +1308,8 @@ def check_clearance(bm):
                             widest[key] = d_full
     print("[04_room] steam clearance in mm (plan view, part to column surface), smallest per part:")
     for name in Parts.ranges:
-        print(f"  {name:15s} tea {worst[(name, 'tea')] * 1000:7.1f}   kettle {worst[(name, 'kettle')] * 1000:7.1f}")
+        cells = [f"{c} {worst[(name, c)] * 1000:7.1f}" if (name, c) in worst else f"{c}   below (no point at or above the marker)" for c in ("tea", "kettle")]
+        print(f"  {name:15s} " + "   ".join(cells))
     full = min(widest.items(), key=lambda kv: kv[1])
     print(f"[04_room] for reference, against the widest part of each column (full radius at any height): {full[1] * 1000:.1f} mm ({full[0][0]} to the {full[0][1]} column)")
     smallest = min(worst.items(), key=lambda kv: kv[1])
@@ -1328,10 +1461,13 @@ def main():
     build_rail(bm)
     build_frames(bm, open_faces)
     build_tea_box(bm)
+    build_saucer(bm)
     check_new_parts(bm)
     check_clearance(bm)
     check_frames(bm)
     check_tea_box(bm)
+    check_saucer(bm)
+    check_prop_footprints(bm)
 
     # Outward normals for the closed solids; leaves and coins are open surfaces with explicit winding, so skip them.
     open_set = set(open_faces)

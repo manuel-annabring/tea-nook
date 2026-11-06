@@ -1,4 +1,4 @@
-"""Step 02: real mug shape, tea disc and Steam_Tea marker (slice 2.1).
+"""Step 02: real mug shape, tea disc and Steam_Tea marker (slice 2.1; wider, rounder teacup in slice D4).
 
 Opens the .blend Blender was started with, REPLACES the geometry of the existing `Mug` and
 `TeaSurface` mesh data in place (objects, names, parents, materials, origins and applied
@@ -18,36 +18,46 @@ import bmesh
 from mathutils import Vector
 
 # ------------------------------------------------------------------ parameters (metres) -------
-SEGMENTS = 20  # round parts; flat shaded on purpose (same as the rest of the blockout)
+SEGMENTS = 18  # round parts (06_smooth_shading.py shades them smooth afterwards)
 
-# Outer profile of the body, bottom to top: (radius, z). Slightly barrel-shaped, soft foot, round lip.
+# Slice D4 (phase 2b): a wider, rounder teacup (open mouth, rounded belly, small foot, small loop handle) that sits on the saucer
+# built by 04_room.py. Still 0.09 high, origin at the centre of the base, handle on +X.
+# Outer profile of the body, bottom to top: (radius, z). r = 0 closes the profile on the axis (underside centre).
 OUTER = [
-    (0.0300, 0.0000),  # flat underside, centre of the base is the origin
-    (0.0360, 0.0050),  # rounded foot
-    (0.0405, 0.0400),  # widest point (barrel belly)
-    (0.0400, 0.0800),
-    (0.0398, 0.0850),  # shoulder of the lip
-    (0.0375, 0.0900),  # rim, outer edge (z = rim height = mug height)
-    (0.0340, 0.0900),  # rim, inner edge: lip is 5.5 mm wide on top
+    (0.0000, 0.0000),  # underside centre = the origin (the base rests on the saucer well, which is 1.3 mm above the worktop)
+    (0.0230, 0.0000),  # flat underside of the small foot
+    (0.0262, 0.0035),  # foot bevel
+    (0.0350, 0.0105),  # belly starts to swell
+    (0.0425, 0.0220),
+    (0.0460, 0.0360),  # round belly
+    (0.0476, 0.0520),
+    (0.0482, 0.0680),  # widest: the cup opens up towards the mouth
+    (0.0474, 0.0868),  # lip, rounded: outer shoulder
+    (0.0462, 0.0900),  # rim, outer edge (z = rim height = mug height)
+    (0.0432, 0.0900),  # rim, inner edge: the lip is 3 mm wide on top
 ]
-# Inner wall, top to bottom, ending at the inner floor centre (radius 0).
+# Inner wall, top to bottom, ending at the inner floor centre (radius 0). Wall 3.5 to 4.5 mm thick.
 INNER = [
-    (0.0325, 0.0850),  # inner shoulder
-    (0.0335, 0.0600),
-    (0.0315, 0.0120),
-    (0.0000, 0.0080),  # inner floor, 8 mm above the base
+    (0.0428, 0.0860),  # inner shoulder
+    (0.0438, 0.0680),
+    (0.0428, 0.0520),
+    (0.0390, 0.0340),
+    (0.0305, 0.0190),
+    (0.0170, 0.0115),
+    (0.0000, 0.0100),  # inner floor, 10 mm above the base
 ]
-MUG_H = OUTER[5][1]
-TEA_DEPTH = 0.008  # tea surface this far below the rim
+MUG_H = 0.0900
+TEA_DEPTH = 0.0080  # tea surface this far below the rim
 TEA_INSET = 0.0005  # tea disc radius is this much smaller than the inner wall at that height
 
-# Handle: a D-shaped loop on +X swept along a half ellipse with a hexagonal cross-section.
-HANDLE_CENTRE_Z = 0.052  # middle of the loop
-HANDLE_HALF_H = 0.0225  # half height of the loop (path)
-HANDLE_REACH = 0.030  # how far the path bulges out beyond its attachment x
-HANDLE_X0 = 0.0375  # attachment x: inside the wall (wall spans about 0.032 to 0.0405)
-HANDLE_HALF_W = 0.0075  # half thickness across the loop (Y)
-HANDLE_HALF_T = 0.0065  # half thickness in the loop plane (XZ)
+# Handle: a small D-shaped loop on +X swept along a half ellipse. Its farthest point is 74 mm from the cup axis
+# (the tea box starts at x 0.13, so 56 mm of clearance remain).
+HANDLE_CENTRE_Z = 0.0560  # middle of the loop
+HANDLE_HALF_H = 0.0195  # half height of the loop (path)
+HANDLE_REACH = 0.0235  # how far the path bulges out beyond its attachment x
+HANDLE_X0 = 0.0440  # attachment x: inside the wall (wall spans about 0.0385 to 0.0478 at these heights)
+HANDLE_HALF_W = 0.0068  # half thickness across the loop (Y)
+HANDLE_HALF_T = 0.0058  # half thickness in the loop plane (XZ)
 HANDLE_STEPS = 8  # segments along the loop
 HANDLE_RING = 8  # corners of the cross-section
 

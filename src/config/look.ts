@@ -27,7 +27,7 @@ export const PALETTE = {
   Mat_Tin: '#C9B8A0',
   Mat_Book: '#7A8FB0',
   Mat_Tea: '#8A4B2A',
-  Mat_KettleDetail: '#5E7F6C',
+  Mat_KettleDetail: '#3D3A38', // slice D4: warm graphite for the kettle handle, base plate, lid ring and knob (D-107)
   Mat_Glass: '#CFE6F2',
   Mat_Sky: '#BFD8F0',
   // Phase 2b (SPEC section 5 amendment of 2026-11-06): dark graphite for the shelf brackets, rail and hooks ...

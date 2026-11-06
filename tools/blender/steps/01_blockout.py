@@ -40,7 +40,7 @@ PALETTE = {
     "Mat_Tin": "#C9B8A0",
     "Mat_Book": "#7A8FB0",
     "Mat_Tea": "#8A4B2A",
-    "Mat_KettleDetail": "#5E7F6C",
+    "Mat_KettleDetail": "#3D3A38",  # slice D4: warm graphite (was dark sage #5E7F6C); 03_kettle.py sets the same value
     "Mat_Glass": "#CFE6F2",
     "Mat_Sky": "#BFD8F0",
 }
