@@ -152,6 +152,7 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 | `Steam_Tea` | Empty | `Mug` | Center of the mug opening at rim height. Steam emits from here. Position only |
 | `Kettle` | mesh | none | Origin at the center of its base, resting on the counter |
 | `Steam_Kettle` | Empty | `Kettle` | Center of the spout opening. Position only |
+| `TeaBag_0` to `TeaBag_3` | mesh | none | **Added by the 2026-11-06 amendment.** One tea bag packet each, standing in the tea box, index = tea index in `TEAS`. Click target and tea-selection indicator (phase 3). Origin at the center of the packet's base, applied transforms, material `Mat_Bag0` to `Mat_Bag3` (one each) |
 | `Window_Glass` | mesh | none | Single quad in the window opening, faces into the room. Origin at its center. Code reads its bounds for the light rays |
 | `Window_Sky` | mesh | none | Quad a few cm outside `Window_Glass`, same size or larger. The "outside" color card; its color changes with time of day (Phase 2) |
 | `Rays_Origin` | Empty | none | Center of the window opening, where light rays start. Position only |
@@ -161,8 +162,8 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 
 ### Separate objects versus merged
 
-- **Must stay separate** (animated, clickable or an effect anchor): `Mug`, `TeaSurface`, `Kettle`, `Window_Glass`, `Window_Sky`, and every marker Empty.
-- **Merged into `Room`** (static, no interaction): counter, both walls, window frame, plant, pot, tin, books. They share one AO map. If a prop later needs to animate or be clickable (for example the plant swaying), it is split out of `Room` and added here by amendment.
+- **Must stay separate** (animated, clickable or an effect anchor): `Mug`, `TeaSurface`, `Kettle`, `TeaBag_0` to `TeaBag_3`, `Window_Glass`, `Window_Sky`, and every marker Empty.
+- **Merged into `Room`** (static, no interaction): counter, both walls, window frame, plants, pots, tin, books, and since the 2026-11-06 amendment the wall shelf, jars, bracket rail, hanging mugs, picture frames, tea box body and saucer. They share one AO map. If a prop later needs to animate or be clickable (for example the plant swaying), it is split out of `Room` and added here by amendment.
 
 ### Rules
 
@@ -178,6 +179,13 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 
 > **AMENDMENT 2026-11-04 (approved in advance by Manuel for slice 2.4):** `Room` additionally requires a second UV layer `UV_AO` (non-overlapping, 0 to 1) and a baked ambient-occlusion texture `public/models/room_ao.png`, 1024 x 1024 (2048 at most), loaded by the app through `import.meta.env.BASE_URL` and applied as `aoMap` on the `Room` materials. `Mug` and `Kettle` get no AO texture and stay flat colored. The contract check verifies the UV layer; the texture size is checked by the bake script. As built (D-046): the check requires the layers `UVMap` then `UV_AO`, all `UV_AO` coordinates inside 0 to 1, no zero-area face and a total UV area of at most 1; the bake script tests overlap per pixel and asserts a texture size of at most 2048. All other rules of this section stay as they are.
 
+> **AMENDMENT 2026-11-06 (phase 2b, slice D0; PROPOSED, becomes effective with Manuel's OK in D0).** Asked for by Manuel: more detail on the back wall and the counter, and a clickable tea bag box for phase 3. Layout: section 7, slice D0.
+> - **New objects:** `TeaBag_0`, `TeaBag_1`, `TeaBag_2`, `TeaBag_3` (meshes, no parent, origin at the centre of the packet's base, applied transforms). They stand in the tea box (the box body is part of `Room`) and are separate because phase 3 lifts the active one and makes each clickable. Index i matches `TEAS[i]`.
+> - **New materials:** `Mat_Iron` (shelf brackets, rail, hooks) and `Mat_Bag0` to `Mat_Bag3` (one per bag, also used by the jar contents in `Room`, so the colour language is one). 13 + 5 = 18 materials. Other new parts reuse existing materials: hanging mugs and saucer `Mat_Frame`, shelf, jar lids and picture frames `Mat_Wood`, jar glass `Mat_Glass` (if the spike in D1 shows transparency sorting problems with the steam, the jars become opaque tinted glass instead, logged), pictograms `Mat_Mug`, `Mat_Leaf` and `Mat_Kettle`.
+> - **Budgets:** materials at most 20, draw calls under 50 (counted with the shadow pass). Triangles (target 30k, cap 100k) and GLB size (3 MB) are unchanged. Both new limits are our own proposals from the first outline, not technical limits; the estimate for the new scene is 36 to 44 draw calls.
+> - **Markers, existing names, parents, origins:** unchanged. The `Mug` and `Kettle` shapes may change in D4 (wider cup, kettle base plate and dark handle), but their names, origins at the base centre, heights (about 0.09 and 0.20), parents and marker meanings stay; `Steam_Tea` and `Steam_Kettle` move to the new rim and spout centre (a marker move, not a contract change).
+> - **Code twins:** `tools/blender/contract_spec.py` and `src/nook/contract.ts` get the new names in D3 (the twin test covers it). `MATERIAL_NAMES` and the palette in `look.ts` get the five new materials; `PALETTE.Mat_Bag0..3` are derived from `TEAS` (same colours as the liquid), not duplicated.
+
 ### Budgets (proposed, confirm after the first export)
 
 | Item | Budget |
@@ -185,8 +193,8 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 | Triangles (whole GLB) | target 30k, hard cap 100k |
 | GLB file size | under 3 MB |
 | Textures | AO map 1024 x 1024 (2048 max); no other textures unless justified in the spec |
-| Materials | at most 14 |
-| Draw calls in the scene (incl. steam, dust) | under 40 |
+| Materials | at most 20 (was 14, amended 2026-11-06) |
+| Draw calls in the scene (incl. steam, dust) | under 50 (was 40, amended 2026-11-06; counted with the shadow pass, as `__nook.stats()` does) |
 
 ### Contract check
 
@@ -247,6 +255,7 @@ Overview:
 | 0 | Setup and shader spike | done | steam on a placeholder mug |
 | 1 | Pipeline, blockout, steam on the model | autonomous | boxy diorama, lit, orbitable, both steams rising |
 | 2 | Real shapes and AO | slice 2.0 collaborative (done); 2.1 to 2.5 autonomous, headless Blender (Manuel's decision 2026-11-04) | the finished-looking model |
+| 2b | Details: back wall, tea box, cup and kettle polish | D0 collaborative (Manuel's decision 2026-11-06), D1 to D5 autonomous and headless | a richer scene with the tea bag objects in place for phase 3 |
 | 3 | Interaction, UI and release prep | autonomous | complete interaction loop, deployable build |
 | 4 | Extras: light | autonomous | window rays, dust, morning/evening toggle |
 | 5 | Extras: audio, mobile, final release | autonomous | audio, mobile tier, final write-up |
@@ -472,6 +481,129 @@ Acceptance criteria:
 
 ---
 
+### Phase 2b: Details: back wall, tea box, cup and kettle polish (D0 collaborative, D1 to D5 autonomous)
+
+Added 2026-11-06 on Manuel's request, between the phase 2 fixes and phase 3: the scene gets more small details, taken from a tea-station reference photo (shelf with jars, rail with hanging mugs, framed signs, tea bag box, saucer, retro kettle), and the tea bags become real contract objects so phase 3 can click them. Branch `phase/2b-details`. D0 was done with Manuel (layout in the widget, amendment in section 5); D1 to D5 run autonomously and headless under the same rules as phase 2 slices 2.1 to 2.5 (the rules list in "Phase 2" above applies: headless Blender only, one `tools/blender/steps/NN_<part>.py` per part, `nook-pre-<slice>.blend1` backups, no shape gate, up to three iterations per part against the references, a "what I did in Blender and why" note in `STATUS.md`, the usual four stops). Additional rules:
+
+- **`04_room.py` stays the single owner of `Room`** (D-064, D-077). New `Room` parts are new builder functions in it. Every slice that touches `Room` ends with `04_room.py --force` and then `05_ao_bake.py` (the contract check fails in between because `UV_AO` is dropped), then contract check, export, `npm run gen:model`.
+- **Steam stays the star.** Nothing may enter the steam columns (clearance of at least 15 mm in plan view, computed from the steam look values in `look.ts` with the same formulas as `steamMath.ts`), and nothing light-coloured and large sits in the area behind the kettle steam at azimuth 0 to 40 degrees (D0 widget: apparent steam position = marker x minus (0.225 minus marker y) times tan(azimuth)).
+- **Not cluttered** (section 3): items not on the list below are not added. Out of scope: teapot, sugar and biscuit jars, tea towel crate, blinds, vase with branches, further plants, candle and lamp (phase 4), lettering on the frames (pictograms only, no textures).
+- Evidence images go to `review/phase-2b/` (git-ignored). Budgets after the 2026-11-06 amendment: materials at most 20, draw calls under 50, triangles target 30k, GLB under 3 MB.
+
+**Layout (decided in D0, 2026-11-06, metres; Blender axes: x right, y back, z up; worktop top is z = 0, the back wall's inner face is y = 0.225, the worktop spans x -0.30 to 0.30).** Every number is the parameter of a script constant; positions are the bounding boxes' lower-left and size unless noted.
+
+| Part | Where and how big |
+|---|---|
+| Shelf | plank x -0.295 to 0.005, top z 0.290, 0.020 thick, depth 0.070 (y 0.155 to 0.225), `Mat_Wood`. Two L brackets in `Mat_Iron`, 0.015 wide, 0.045 tall, at x -0.270 and x -0.035. Must end left of the kettle steam |
+| 4 jars | on the shelf, centres at x -0.2575, -0.1825, -0.1075, -0.0325 and y 0.190, diameter 0.060, glass body 0.090 high (`Mat_Glass`), lid 0.010 (`Mat_Wood`), contents 0.060 high in `Mat_Bag0` to `Mat_Bag3` (jar i has tea i) |
+| Rail with 4 hanging mugs | bar x -0.255 to -0.015 at z 0.215, `Mat_Iron`; hooks and mugs (`Mat_Frame`, 0.054 wide, 0.070 high, hook 0.016) at x -0.225, -0.170, -0.115, -0.060, top of the mugs at z 0.195; nothing in front of y 0.153 |
+| Frame A (cup) | x 0.32 to 0.48, z 0.25 to 0.36, 0.015 deep on the back wall, 8 mm `Mat_Wood` border, `Mat_Frame` inside, a cup pictogram in `Mat_Mug` |
+| Frame B (leaf) | x 0.50 to 0.59, z 0.22 to 0.34, leaf pictogram in `Mat_Leaf` |
+| Frame C (heart) | x 0.33 to 0.41, z 0.13 to 0.21, heart pictogram in `Mat_Mug` |
+| Tea box | centre (0.19, -0.15), 0.12 x 0.07 x 0.045 (x, y, z), open top with four slots, `Mat_Wood`, in `Room` |
+| 4 tea bags | `TeaBag_0` to `TeaBag_3`, centres at x 0.145, 0.175, 0.205, 0.235 and y -0.15, 0.022 wide, 0.050 deep, standing in the slots, about 0.030 above the box rim at rest; room to lift about 0.015 (phase 3) |
+| Saucer | radius 0.055 around the mug (0, -0.07), about 0.006 high, `Mat_Frame`, in `Room`; `Mug` itself does not move |
+| Mug (D4) | wider, rounder teacup profile (still about 0.09 high, origin at the base centre) |
+| Kettle (D4) | handle and a thin base plate in `Mat_KettleDetail`, lid ring, same height and footprint class (about 0.20 high, origin at the base centre) |
+
+Unchanged: tin (-0.20, -0.13), books (-0.01, 0.17), kettle (0.17, 0.11), mug (0, -0.07), the plants, the window, every marker except `Steam_Tea` and `Steam_Kettle` (which follow the reshaped rim and spout).
+
+| Slice | Name | Model and effort |
+|---|---|---|
+| D0 | Layout and contract amendment | Sonnet, high (collaborative, done with Manuel) |
+| D1 | Back wall: shelf, jars, rail, hanging mugs | Sonnet, medium |
+| D2 | Picture frames with pictograms | Sonnet, medium |
+| D3 | Tea box and the four `TeaBag` objects | Sonnet, high |
+| D4 | Cup, saucer and kettle polish | Sonnet, medium (high if the previews are clearly weaker than the reference) |
+| D5 | AO re-bake, shadow, budgets, framing | Sonnet, high |
+
+### Slice D0: Layout and contract amendment
+Goal: Manuel decides what goes where, the contract amendment is written, and phase 2b is specified.
+Scope: SPEC (this section, section 5 amendment, slice 3.1 note), `DECISIONS.md`, `STATUS.md`.
+Out of scope: any model or code change.
+Mode: collaborative. Layout chosen in the interactive planner (back wall elevation and worktop plan, real steam profiles, shelf depth check, azimuth parallax). Manuel kept the default layout on 2026-11-06.
+Acceptance criteria:
+- [ ] The layout table above is complete and approved by Manuel (logged in `DECISIONS.md`).
+- [ ] The section 5 amendment is written and Manuel approved it (logged).
+- [ ] Slices D1 to D5 below are specified with criteria; slice 3.1 mentions the tea bags.
+
+### Slice D1: Back wall: shelf, jars, rail, hanging mugs
+Goal: the shelf with four jars and the rail with four hanging mugs stand on the back wall, inside `Room`.
+Scope: `tools/blender/steps/04_room.py` (new builders), `05_ao_bake.py` only if the bake needs it, `tools/blender/contract_spec.py` and `src/nook/contract.ts` (materials `Mat_Iron`, `Mat_Bag0` to `Mat_Bag3`, the new budgets), `src/config/look.ts` (`PALETTE`: `Mat_Iron`; `Mat_Bag0..3` derived from `TEAS`), `Nook.tsx` (apply the palette), regenerated GLB and component.
+Out of scope: frames, tea box, mug and kettle shapes.
+Depends on: D0 approved
+Taste-critical: yes
+Acceptance criteria:
+- [ ] Contract check passes; `Room` is still one mesh (new slots appended after the existing seven); material count and all budget numbers reported (materials at most 20, GLB under 3 MB, triangles).
+- [ ] Positions and sizes equal the layout table within 5 mm (the script prints the bounding boxes of the new parts, output pasted; it fails if a part leaves its box).
+- [ ] Steam clearance: the script computes the plan-view distance of every new part to the tea and kettle steam columns (steam values from `look.ts`, same width formula as `steamMath.ts`); minimum at least 15 mm (output pasted).
+- [ ] Jar glass: a spike compares transparent `Mat_Glass` jars and opaque tinted jars with the kettle steam in front at azimuth 0, 25 and 40; the choice and the reason are logged. If transparency shows sorting artefacts, opaque tinted glass is used.
+- [ ] `04_room.py --force` and `05_ao_bake.py` run twice give a byte-identical `room_ao.png` of at most 2048 x 2048; if 1024 no longer gives enough texels (contact shadows under the shelf visible), the move to 2048 is logged.
+- [ ] Previews (iso, front, side, top) and in-app `?cam=hero`, `front`, `side` screenshots in `review/phase-2b/`; Claude states what it sees (the jars carry four different colours, the mugs hang clear of the books and the steam).
+- [ ] Base checks pass; console clean; `grep -r "__nook" dist` prints nothing.
+
+### Slice D2: Picture frames with pictograms
+Goal: three frames with cup, leaf and heart pictograms hang on the right part of the back wall.
+Scope: `04_room.py` (frame builder), regenerated GLB and component.
+Out of scope: lettering, textures, new materials (frames use `Mat_Wood`, `Mat_Frame` and existing colours for the pictograms).
+Depends on: D1
+Taste-critical: yes
+Acceptance criteria:
+- [ ] Contract check passes; `Room` still one mesh; no new materials.
+- [ ] Frame positions and sizes equal the layout table within 5 mm; the frames are 15 mm deep and flush on the wall (script output pasted).
+- [ ] No frame overlaps the apparent kettle steam or tea steam area at azimuth 0, 10, 20, 30 and 40 degrees (script table pasted, using the D0 formula) and none overlaps the kettle handle, the floor plant or another wall part.
+- [ ] Pictograms are geometry (raised 2 mm), readable as cup, leaf and heart in the hero screenshot; choices logged.
+- [ ] `04_room.py --force` then `05_ao_bake.py` repeatable (byte-identical PNG); previews and hero, front, side screenshots in `review/phase-2b/`.
+- [ ] Base checks pass; console clean.
+
+### Slice D3: Tea box and the four TeaBag objects
+Goal: a tea box with four coloured packets stands on the worktop; the packets are contract objects ready for phase 3.
+Scope: `04_room.py` (box body), a new step `tools/blender/steps/08_tea_bags.py` (the four meshes), `contract_spec.py` and `contract.ts` (objects `TeaBag_0` to `TeaBag_3`, parent none, material per bag), `Nook.tsx` (find the bags by name, assert in dev, colours from `TEAS` through the palette), `src/config/look.ts`, regenerated GLB and component.
+Out of scope: click handling, lifting, hover (phase 3, slice 3.1).
+Depends on: D2
+Taste-critical: yes
+Acceptance criteria:
+- [ ] Contract check passes with the new names; the twin test of `contract_spec.py` and `contract.ts` passes; each bag has origin at its base centre within 1 mm, applied transforms, no parent, and exactly its own `Mat_Bag<i>`.
+- [ ] Positions equal the layout table within 5 mm; the box does not touch mug, saucer, kettle or tin (script output pasted).
+- [ ] Runtime colours: `Mat_Bag0` to `Mat_Bag3` equal the `TEAS` colours in the palette (read with `__nook.materialColors()`).
+- [ ] Each bag can be hit: `__nook.pick(...Object.values(__nook.project('TeaBag_i')))` returns `TeaBag_i` for i = 0 to 3 at `?cam=hero` and `front`, and at azimuth 0 and 40 (output pasted). If a bag is hidden, the box or bag size is adjusted (within the layout) and logged.
+- [ ] Draw calls under 50 and triangles reported with the live shadow (decision logged: do the bags cast a shadow? default no).
+- [ ] `npm run gen:model` twice gives an identical file; GLB under 3 MB; previews and hero, front, side screenshots in `review/phase-2b/`.
+- [ ] Base checks pass; console clean.
+
+### Slice D4: Cup, saucer and kettle polish
+Goal: a wider, rounder teacup on a saucer and a retro-style kettle with dark handle and base plate.
+Scope: `tools/blender/steps/02_mug.py` and `03_kettle.py` (or successor steps that keep the journal re-runnable), `06_smooth_shading.py` rerun, `04_room.py` (saucer), markers `Steam_Tea`, `Steam_Kettle`, regenerated GLB and component.
+Out of scope: palette changes (terracotta mug and sage kettle stay), speckle textures, a teapot.
+Depends on: D3
+Taste-critical: yes
+Acceptance criteria:
+- [ ] Contract check passes; names, origins at the base centre, parents and applied transforms unchanged; `Mug` about 0.09 and `Kettle` about 0.20 high (within 5 mm).
+- [ ] `Steam_Tea` within 5 mm of the new rim centre and `Steam_Kettle` within 5 mm of the spout opening centre; the steam meshes start at the markers (`__nook.worldPosition` equals the mesh base within 1 cm).
+- [ ] `Kettle` still exports as a two-mesh group found by `getObjectByName('Kettle')`; handle and base plate use `Mat_KettleDetail`.
+- [ ] The tea surface is visible from the hero camera: at least half of a grid of points on the `TeaSurface` disc projected with `__nook.projectPoint` pick `TeaSurface` (output pasted).
+- [ ] The saucer sits in `Room` under the mug without moving the mug; the saucer touches no other part.
+- [ ] The shapes follow reference 01 and the tea-station photo (round teacup, retro kettle); choices logged; triangle counts reported (Mug about 540 and Kettle about 900 are guides, not caps).
+- [ ] `05_ao_bake.py` rerun; previews and hero, front, side screenshots in `review/phase-2b/`; base checks pass; console clean.
+
+### Slice D5: AO re-bake, shadow, budgets, framing
+Goal: the finished scene is checked against every budget and the camera and light still work with the new details.
+Scope: `look.ts` (hero framing if needed), `STATUS.md` budget table, fixes inside existing files only.
+Out of scope: new parts.
+Depends on: D4
+Taste-critical: yes (framing). Criterion is "implemented with the recommended value, decision logged".
+Acceptance criteria:
+- [ ] Budget table in `STATUS.md`: triangles, GLB size, materials, draw calls with shadow, average frame time over `__nook.benchmark(2000)` (two runs, compared with the 1.6 ms of F5), each against its section 5 budget.
+- [ ] Hero view: the whole diorama is inside 1280 x 720 (projected bounding-box corners) and `Orbit_Target` projects within 10% of the viewport centre; the orbit clamp test passes at the four corners and both distances with no important object clipped (screenshots).
+- [ ] Shadow: no clipping and no acne at hero, front and the four corners (`fitShadowFrustum` still fits, texel sizes reported); the new shelf shadow on the back wall reads as a soft shadow.
+- [ ] Steam readability: a screenshot pair (kettle and tea steam against the new back wall) shows both steams clearly; if a part hides a steam, it is moved within the layout and logged.
+- [ ] `grep -r "__nook" dist` and `grep -r leva dist` print nothing; base checks pass; console clean.
+- [ ] A fresh-context reviewer runs and `REVIEW-phase-2b.md` is written; Manuel is notified; phase 3 is not started.
+
+Phase 2b review ("Try this"): orbit through 0 to 40 degrees and look for anything crowding the steam; hover the pointer through both steams; look at the jars (colours match the four teas), the hanging mugs, the frames and the tea box; compare cup and kettle with the references; run `npm run dev` with `?cam=front`.
+
+---
+
 ### Phase 3: Interaction, UI and release prep (autonomous)
 
 Branch `phase/3-interaction`. Tea colors and steam transitions come first (look-defining), the overlay second, release prep last. Needs no git remote; deployment itself happens after Manuel adds one.
@@ -484,15 +616,16 @@ Branch `phase/3-interaction`. Tea colors and steam transitions come first (look-
 | 3.4 | Deploy workflow and README | Sonnet, low |
 
 ### Slice 3.1: Click to cycle tea
-Goal: clicking the mug advances the tea; steam color, density, speed and the tea surface color damp toward the new tea.
-Scope: `src/store/useStore.ts` (`teaIndex`, `nextTea`); `src/input/` (mug click and hover); `src/nook/Nook.tsx`, `Steam.tsx`; `src/lib/teas.ts` (values only if tuning is needed).
+Goal: clicking the mug advances the tea, and clicking a tea bag (`TeaBag_0` to `TeaBag_3`, phase 2b) selects that tea directly; the active bag stands lifted above the others. Steam color, density, speed and the tea surface color damp toward the new tea.
+Scope: `src/store/useStore.ts` (`teaIndex`, `nextTea`, `setTea`); `src/input/` (mug and bag click and hover); `src/nook/Nook.tsx`, `Steam.tsx`; `src/lib/teas.ts` (values only if tuning is needed). The bag lift is a damped `position.y` offset in `useFrame` (about 0.015 m, value in `look.ts`), read from the store with `getState()`.
 Out of scope: overlay UI, audio, pointer swirl, new steam maths.
-Depends on: 2.5 (or 1.5 if Phase 2 is skipped)
+Depends on: 2b (D3: the bag objects exist), or 2.5 for the mug click alone
 Taste-critical: yes. Criterion is "implemented with the values in `TEAS`, decision logged".
 Acceptance criteria:
 - [ ] Base checks pass.
 - [ ] Clicking at `__nook.project('Mug')` increases `teaIndex` by 1; the 4th click wraps to 0 (`useStore.getState().teaIndex`, exposed under the dev hook).
-- [ ] Clicking elsewhere (the counter, empty background) does not change `teaIndex`; a drag that starts on the mug and moves more than 5 px does not count as a click.
+- [ ] Clicking at `__nook.project('TeaBag_i')` sets `teaIndex` to i for i = 0 to 3; the active bag's lift converges to its target within 1 s without a jump and the other three are at rest (sample with `javascript_tool`); the bag handler calls `stopPropagation()` and sets the pointer cursor on hover like the mug.
+- [ ] Clicking elsewhere (the counter, empty background) does not change `teaIndex`; a drag that starts on the mug or a bag and moves more than 5 px does not count as a click.
 - [ ] After a click the steam uniforms and the `TeaSurface` material color converge to the new tea's values within 2 s without a jump (sample over time with `javascript_tool`: monotone change, no step larger than 25% of the total in one frame).
 - [ ] Hover over the mug sets `cursor: pointer` on the canvas; leaving or unmounting resets it. The mug handler calls `stopPropagation()`.
 - [ ] No component subscribes to pointer fields; no `setState` and no allocations in `useFrame` (grep).
@@ -641,7 +774,7 @@ Acceptance criteria:
 ## 8. Definition of done (Core, end of phase 3)
 
 - The live GitHub Pages URL loads with no console errors or warnings (known noise from dependencies is listed in `CLAUDE.md`).
-- Contract check passes; GLB under 3 MB, under 100k triangles (target 30k), at most 14 materials.
+- Contract check passes; GLB under 3 MB, under 100k triangles (target 30k), at most 20 materials (14 before the 2026-11-06 amendment).
 - Tea steam and kettle steam rise from their markers and are visibly the same shader with different uniforms.
 - Clicking the mug cycles 4 teas; steam color, density, speed and tea surface color change smoothly.
 - The pointer visibly pushes the steam away.
