@@ -5,8 +5,8 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 ## Now
 
 - **Current phase:** Phase 2b (Details: back wall, tea box, cup and kettle polish) on branch `phase/2b-details`, started 2026-11-06 (D-078). Phases 1 and 2 and the phase 2 fixes (F1 to F5, G1, G2) are merged into `main`; the Git history was rewritten on 2026-11-05 (the old history is in the bundle `tea-nook-before-rewrite.bundle` next to the project folder, safe to delete once Manuel is satisfied).
-- **State:** D0 (layout and contract amendment) is written: layout kept as the planner default (D-083), SPEC section 5 amendment **proposed, waiting for Manuel's OK**, phase 2b specified in SPEC section 7, slice 3.1 extended for the tea bags. D1 to D5 are not started. Phase 3 is not started.
-- **Next action:** Manuel approves the section 5 amendment (new objects `TeaBag_0..3`, materials `Mat_Iron` and `Mat_Bag0..3`, budgets 20 materials and 50 draw calls). Then D1 to D5 run autonomously (a fresh-context subagent per slice, model and effort from the SPEC table), then the reviewer and `REVIEW-phase-2b.md`.
+- **State:** D0 is done: layout kept as the planner default (D-083), SPEC section 5 amendment **approved by Manuel on 2026-11-06** (D-084), phase 2b specified in SPEC section 7, slice 3.1 extended for the tea bags. D1 to D5 are not started. Phase 3 is not started.
+- **Next action:** D1 to D5 run autonomously (a fresh-context subagent per slice, model and effort from the SPEC table), then the reviewer and `REVIEW-phase-2b.md`.
 - **Blockers:** none.
 
 ## Slices
@@ -49,7 +49,7 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 
 | Slice | Name | Mode | Status | Commit | Notes |
 |---|---|---|---|---|---|
-| D0 | Layout and contract amendment | collaborative | in progress | | D-078 to D-083. Layout from the interactive planner (default kept). Amendment proposed in SPEC section 5, waiting for Manuel's OK |
+| D0 | Layout and contract amendment | collaborative | done | f9cbd51 + approval commit | D-078 to D-084. Layout from the interactive planner (default kept). Amendment approved by Manuel 2026-11-06 |
 | D1 | Back wall: shelf, jars, rail, hanging mugs | autonomous | todo | | |
 | D2 | Picture frames with pictograms | autonomous | todo | | |
 | D3 | Tea box and the four TeaBag objects | autonomous | todo | | |
