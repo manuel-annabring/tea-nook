@@ -25,6 +25,10 @@ appended after the original seven (`Mat_Iron`, `Mat_Bag0` to `Mat_Bag3`, plus `M
 script prints and checks the bounding box of every new part against the layout table (5 mm) and the plan-view clearance of
 every new part to the two steam columns (15 mm), with the steam numbers read from `src/nook/steamDefaults.ts`.
 
+Slice D2 adds three picture frames on the back wall (`build_frames`: Mat_Wood border, Mat_Frame panel, a cup, leaf and heart pictogram
+extruded 2 mm out of the panel as flat polygons in Mat_Pot and Mat_Leaf). `check_frames` prints and asserts the depth, the pictogram raise,
+the separation from every other part and the apparent steam table of the D0 planner formula.
+
 Run (on a copy first, then on the real file):
   Blender -b tools/blender/nook.blend --python tools/blender/steps/04_room.py -- [output.blend]
 Option `--jar-glass=glass|tinted` overrides `JAR_GLASS` (used by the D1 spike).
@@ -245,6 +249,27 @@ MUG_PROFILE = [  # (radius, z above the mug base): underside, outer wall (taper)
 MUG_HANDLE_R = 0.0025  # handle tube radius (4 sided)
 # Handle centre line in the mug's frame (x outwards from the axis on the +X side, z above the base).
 MUG_HANDLE_PATH = ((0.019, 0.060), (0.0285, 0.056), (0.0300, 0.040), (0.0285, 0.022), (0.0185, 0.016))
+# ---- Slice D2: picture frames with pictograms (SPEC.md section 7, phase 2b layout table "Frame A/B/C"; metres) ------------
+# Frames sit flush on the back wall (WALL_FACE), FRAME_DEPTH deep, with a Mat_Wood border and a Mat_Frame panel. The panel is recessed
+# PANEL_RECESS from the front of the border; the pictogram is extruded PICTO_RAISE out of the panel, so its front is flush with the
+# border front and the whole frame stays inside the 15 mm of the layout table. The pictograms use Mat_Pot (terracotta, close to
+# Mat_Mug) and Mat_Leaf: Mat_Mug is shared with the `Mug` object and applyRoomAo would put the Room AO map on it (see DECISIONS.md).
+FRAME_DEPTH, FRAME_BORDER, PANEL_RECESS, PICTO_RAISE = 0.015, 0.008, 0.002, 0.002
+PICTO_MARGIN_MIN = 0.005  # a pictogram keeps at least this much panel around it
+FRAMES = {  # name: (x range, z range, pictogram, material)
+    "A": ((0.32, 0.48), (0.25, 0.36), "cup", "Mat_Pot"),
+    "B": ((0.50, 0.59), (0.22, 0.34), "leaf", "Mat_Leaf"),
+    "C": ((0.33, 0.41), (0.13, 0.21), "heart", "Mat_Pot"),
+}
+CUP_SCALE = 1.5
+# Cup silhouette in a local (u right, v up) frame in metres at scale 1: body with a vertical right wall (the handle abuts it), rounded
+# bottom, a thin saucer below it and a half ring handle on the right (separate pieces that share edges, never overlap).
+CUP_BODY = [(0.025, 0.024), (-0.025, 0.024), (-0.025, -0.004), (-0.0215, -0.009), (-0.013, -0.012), (0.013, -0.012), (0.0215, -0.009), (0.025, -0.004)]
+CUP_SAUCER = [(-0.036, -0.012), (-0.030, -0.019), (0.030, -0.019), (0.036, -0.012)]
+CUP_HANDLE = dict(centre=(0.025, 0.0105), r_out=0.0125, r_in=0.0070, steps=6)
+LEAF_LEN, LEAF_WIDTH, LEAF_GAP, LEAF_STEM, LEAF_STEM_W, LEAF_TILT_DEG = 0.066, 0.038, 0.0014, 0.012, 0.0030, 25.0
+LEAF_STATIONS = (0.14, 0.30, 0.46, 0.62, 0.78, 0.91)  # blade outline stations along the length (fractions)
+HEART_WIDTH, HEART_POINTS = 0.048, 16
 BOX_TOL = 0.005  # a new part's bounding box must match the layout table within 5 mm
 CLEARANCE_MIN = 0.015  # plan-view distance of every new part to a steam column
 
@@ -783,6 +808,8 @@ class Parts:
     """Vertex ranges of the new D1 parts (name -> (first index, one past last)), for the bounding box and clearance checks."""
 
     ranges = {}
+    pictos = {}  # frame name -> vertex range of its pictogram pieces (inside the frame's own range)
+    others = {}  # older parts (name -> vertex range) the frames must not touch
 
 
 def tracked(bm, name, fn):
@@ -852,6 +879,92 @@ def build_rail(bm):
         tracked(bm, f"rail_mug_{i}", mug)
 
 
+def picto_piece(bm, pts, centre, y_panel, mat, open_faces):
+    """Extrudes the flat polygon `pts` ((u, v) = (x, z) offsets from `centre`) PICTO_RAISE out of the panel plane `y_panel` towards -Y.
+    Front face plus side walls, no back face (buried in the panel). The winding is explicit (counter-clockwise in (u, v) is a normal on
+    -Y), so the faces go into `open_faces` and skip the closed-solid normal fix."""
+    area = sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(pts, pts[1:] + pts[:1]))
+    if area < 0:
+        pts = pts[::-1]
+    cx, cz = centre
+    front = [bm.verts.new((cx + u, y_panel - PICTO_RAISE, cz + v)) for u, v in pts]
+    back = [bm.verts.new((cx + u, y_panel, cz + v)) for u, v in pts]
+    faces = [bm.faces.new(front)]
+    n = len(pts)
+    for i in range(n):
+        j = (i + 1) % n
+        faces.append(bm.faces.new((front[i], back[i], back[j], front[j])))
+    for f in faces:
+        f.material_index = mat
+        open_faces.append(f)
+
+
+def cup_pieces():
+    """Cup silhouette pieces (lists of (u, v) points), centred on the middle of their bounding box."""
+    k = CUP_SCALE
+    h = CUP_HANDLE
+    hx, hv = h["centre"]
+    outer = [(hx + h["r_out"] * math.cos(a), hv + h["r_out"] * math.sin(a)) for a in (math.radians(-90 + 180 * i / h["steps"]) for i in range(h["steps"] + 1))]
+    inner = [(hx + h["r_in"] * math.cos(a), hv + h["r_in"] * math.sin(a)) for a in (math.radians(90 - 180 * i / h["steps"]) for i in range(h["steps"] + 1))]
+    pieces = [CUP_BODY, CUP_SAUCER, outer + inner]
+    pts = [p for piece in pieces for p in piece]
+    ox = (min(p[0] for p in pts) + max(p[0] for p in pts)) / 2
+    oz = (min(p[1] for p in pts) + max(p[1] for p in pts)) / 2
+    return [[((u - ox) * k, (v - oz) * k) for u, v in piece] for piece in pieces]
+
+
+def leaf_pieces():
+    """Leaf pieces: two blade halves with a gap between them (the vein shows the panel colour) and a stem, tilted by LEAF_TILT_DEG."""
+    half_w = LEAF_WIDTH / 2
+    g = LEAF_GAP / 2
+    right = [(g, 0.0)] + [(g + half_w * math.sin(math.pi * t) ** 0.75 * (1 - 0.3 * t), t * LEAF_LEN) for t in LEAF_STATIONS] + [(g, LEAF_LEN)]
+    left = [(-u, v) for u, v in right]
+    stem = [(-LEAF_STEM_W / 2, -LEAF_STEM), (LEAF_STEM_W / 2, -LEAF_STEM), (LEAF_STEM_W / 2, 0.0), (-LEAF_STEM_W / 2, 0.0)]
+    a = math.radians(-LEAF_TILT_DEG)  # tilt the tip to the right
+    ca, sa = math.cos(a), math.sin(a)
+    pieces = [[(u * ca - v * sa, u * sa + v * ca) for u, v in piece] for piece in (right, left, stem)]
+    pts = [p for piece in pieces for p in piece]
+    ox = (min(p[0] for p in pts) + max(p[0] for p in pts)) / 2
+    oz = (min(p[1] for p in pts) + max(p[1] for p in pts)) / 2
+    return [[(u - ox, v - oz) for u, v in piece] for piece in pieces]
+
+
+def heart_pieces():
+    """Heart outline from the classic parametric curve, sampled at HEART_POINTS points (two lobes and a point)."""
+    pts = []
+    for i in range(HEART_POINTS):
+        t = 2 * math.pi * i / HEART_POINTS
+        pts.append((16 * math.sin(t) ** 3, 13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t)))
+    k = HEART_WIDTH / 32
+    oz = (min(p[1] for p in pts) + max(p[1] for p in pts)) / 2
+    return [[(u * k, (v - oz) * k) for u, v in pts]]
+
+
+PICTOS = {"cup": cup_pieces, "leaf": leaf_pieces, "heart": heart_pieces}
+
+
+def build_frames(bm, open_faces):
+    wd, panel = IDX["Mat_Wood"], IDX["Mat_Frame"]
+    y0 = WALL_FACE - FRAME_DEPTH
+    b = FRAME_BORDER
+    for name, ((x0, x1), (z0, z1), picto, mat_name) in FRAMES.items():
+        def frame(x0=x0, x1=x1, z0=z0, z1=z1, picto=picto, mat_name=mat_name, name=name):
+            yw = WALL_FACE + EMBED
+            box(bm, (x0, y0, z0), (x1, yw, z0 + b), wd)  # bottom bar
+            box(bm, (x0, y0, z1 - b), (x1, yw, z1), wd)  # top bar
+            box(bm, (x0, y0, z0 + b), (x0 + b, yw, z1 - b), wd)  # left bar
+            box(bm, (x1 - b, y0, z0 + b), (x1, yw, z1 - b), wd)  # right bar
+            y_panel = y0 + PANEL_RECESS
+            box(bm, (x0 + b, y_panel, z0 + b), (x1 - b, yw, z1 - b), panel)
+            v0 = len(bm.verts)
+            centre = ((x0 + x1) / 2, (z0 + z1) / 2)
+            for piece in PICTOS[picto]():
+                picto_piece(bm, piece, centre, y_panel, IDX[mat_name], open_faces)
+            Parts.pictos[f"frame_{name}"] = (v0, len(bm.verts))
+
+        tracked(bm, f"frame_{name}", frame)
+
+
 def expected_boxes():
     """Layout table (SPEC.md section 7, phase 2b) as lower/upper corners per part name."""
     out = {}
@@ -868,6 +981,8 @@ def expected_boxes():
     for i, hx in enumerate(HOOK_X):
         out[f"rail_hook_{i}"] = ((hx - HOOK_R, RAIL_Y - HOOK_R, RAIL_Z - h - HOOK_LEN), (hx + HOOK_R, RAIL_Y + HOOK_R, RAIL_Z))
         out[f"rail_mug_{i}"] = ((hx - MUG_W / 2, RAIL_Y - 0.0215, MUG_TOP_Z - MUG_H), (hx + MUG_W / 2, RAIL_Y + 0.0215, MUG_TOP_Z))
+    for name, ((x0, x1), (z0, z1), _p, _m) in FRAMES.items():
+        out[f"frame_{name}"] = ((x0, WALL_FACE - FRAME_DEPTH, z0), (x1, WALL_FACE, z1))
     return out
 
 
@@ -879,7 +994,7 @@ def check_new_parts(bm):
     if missing:
         raise SystemExit(f"04_room: layout parts and built parts differ: {sorted(missing)}")
     bad = []
-    print("[04_room] D1 parts: bounding boxes in metres (lower corner .. upper corner), size in mm, worst deviation from the layout table in mm")
+    print("[04_room] D1 and D2 parts: bounding boxes in metres (lower corner .. upper corner), size in mm, worst deviation from the layout table in mm")
     for name, (a, b) in Parts.ranges.items():
         pts = [bm.verts[k].co for k in range(a, b)]
         lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
@@ -976,6 +1091,81 @@ def check_clearance(bm):
         raise SystemExit(f"04_room: {smallest[0][0]} is only {smallest[1] * 1000:.1f} mm from the {smallest[0][1]} steam column (minimum {CLEARANCE_MIN * 1000:.0f} mm)")
 
 
+def check_frames(bm):
+    """Slice D2 checks: depth and flush position, pictogram raise and margin, separation from every other part (3D boxes, the kettle and
+    the mug included), and the apparent steam table with the D0 formula (shift = -(WALL_FACE - marker y) * tan(azimuth))."""
+    bm.verts.ensure_lookup_table()
+
+    def box_of(rng):
+        pts = [bm.verts[k].co for k in range(*rng)]
+        return Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts))), Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
+
+    print("[04_room] D2 frames: depth and position on the wall, pictogram raise above the panel and margin to the border (mm)")
+    for name, ((x0, x1), (z0, z1), picto, mat_name) in FRAMES.items():
+        lo, hi = box_of(Parts.ranges[f"frame_{name}"])
+        plo, phi = box_of(Parts.pictos[f"frame_{name}"])
+        y_panel = WALL_FACE - FRAME_DEPTH + PANEL_RECESS
+        raise_mm = (y_panel - plo.y) * 1000
+        inner = (x0 + FRAME_BORDER, x1 - FRAME_BORDER, z0 + FRAME_BORDER, z1 - FRAME_BORDER)
+        margin = min(plo.x - inner[0], inner[1] - phi.x, plo.z - inner[2], inner[3] - phi.z) * 1000
+        print(f"  frame {name} ({picto:5s}, {mat_name}) x {lo.x:.3f}..{hi.x:.3f}  z {lo.z:.3f}..{hi.z:.3f}  y {lo.y:.3f}..{hi.y - EMBED:.3f} (embed {EMBED * 1000:.0f} mm in the wall)  "
+              f"depth {(WALL_FACE - lo.y) * 1000:.1f}  size {(x1 - x0) * 1000:.0f} x {(z1 - z0) * 1000:.0f}  picto raise {raise_mm:.1f}  margin {margin:.1f}")
+        assert abs((WALL_FACE - lo.y) - FRAME_DEPTH) < 1e-6 and abs(hi.y - (WALL_FACE + EMBED)) < 1e-6, f"frame {name} is not {FRAME_DEPTH * 1000:.0f} mm deep and flush"
+        assert abs(raise_mm - PICTO_RAISE * 1000) < 0.01, f"pictogram {name} is not raised {PICTO_RAISE * 1000:.0f} mm"
+        assert margin >= PICTO_MARGIN_MIN * 1000, f"pictogram {name} is too close to the border ({margin:.1f} mm)"
+
+    # Other things the frames must not touch: every D1 part, the older Room parts and the kettle and mug objects (their handle included).
+    obstacles = {n: box_of(r) for n, r in Parts.ranges.items() if not n.startswith("frame_")}
+    obstacles.update({n: box_of(r) for n, r in Parts.others.items()})
+    for oname in ("Kettle", "Mug"):
+        ob = bpy.data.objects[oname]
+        corners = [ob.matrix_world @ Vector(c) for c in ob.bound_box]
+        for child in ob.children_recursive:
+            corners += [child.matrix_world @ Vector(c) for c in child.bound_box]
+        obstacles[oname] = (Vector((min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners))), Vector((max(c.x for c in corners), max(c.y for c in corners), max(c.z for c in corners))))
+    print("[04_room] D2 separation of each frame from the nearest other part, mm (separation = largest gap over x, y, z; negative = boxes overlap)")
+    for name in FRAMES:
+        flo, fhi = box_of(Parts.ranges[f"frame_{name}"])
+        best = None
+        for oname, (olo, ohi) in obstacles.items():
+            sep = max(max(olo[k] - fhi[k], flo[k] - ohi[k]) for k in range(3))
+            if best is None or sep < best[0]:
+                best = (sep, oname)
+        sep_xz = {oname: max(max(olo[k] - fhi[k], flo[k] - ohi[k]) for k in (0, 2)) for oname, (olo, ohi) in obstacles.items()}
+        near_xz = min(sep_xz.items(), key=lambda kv: kv[1])
+        print(f"  frame {name}: nearest in 3D {best[1]} {best[0] * 1000:.1f} mm; nearest in the wall plane (x, z) {near_xz[0]} {near_xz[1] * 1000:.1f} mm")
+        assert best[0] > 0, f"frame {name} overlaps {best[1]}"
+    kb = obstacles["Kettle"]
+    print(f"  kettle box x {kb[0].x:.3f}..{kb[1].x:.3f} (handle side), floor plant box x {obstacles['plant'][0].x:.3f}..{obstacles['plant'][1].x:.3f}, top z {obstacles['plant'][1].z:.3f}")
+
+    cols = steam_columns()
+    print("[04_room] D2 apparent steam on the back wall, x gap in mm from the steam edge to the frame (D0 formula: centre = marker x - (0.225 - marker y) * tan(azimuth),")
+    print("          half width = radius * steamWidth(h) at the widest height inside the frame's z range; in brackets with the half width stretched by 1/cos(azimuth), the true silhouette of a cylinder)")
+    worst = 1e9
+    for az in (0, 10, 20, 30, 40):
+        ta, ca = math.tan(math.radians(az)), math.cos(math.radians(az))
+        for cname, cx, cy, cz, height, radius, wb, wp in cols:
+            xc = cx - (WALL_FACE - cy) * ta
+            cells = []
+            for name, ((x0, x1), (z0, z1), _p, _m) in FRAMES.items():
+                za, zb = max(z0, cz), min(z1, cz + height)
+                zin = za < zb
+                if not zin:
+                    za, zb = cz, cz + height  # no common height: report against the whole column (conservative)
+                r = max(radius * steam_width((z - cz) / height, wb, wp) for z in (za + (zb - za) * i / 20 for i in range(21)))
+
+                def gap(rr):
+                    return max(x0 - (xc + rr), (xc - rr) - x1)
+
+                g0, g1 = gap(r), gap(r / ca)
+                worst = min(worst, g0 * 1000 if zin else 1e9)
+                cells.append(f"{name} {g0 * 1000:7.1f} ({g1 * 1000:7.1f}){'*' if zin else ' '}")
+            print(f"  az {az:2d}  {cname:6s} centre x {xc:+.3f}  " + "   ".join(cells))
+    print("          * = frame and steam share a height range (otherwise the gap is against the whole column). Smallest gap with shared height:",
+          "none" if worst == 1e9 else f"{worst:.1f} mm")
+    assert worst > 0, "a frame overlaps the apparent steam"
+
+
 # ------------------------------------------------------------------------------ main ------------
 
 
@@ -1029,15 +1219,23 @@ def main():
     build_walls_and_window(bm)
     build_floor(bm)
     build_cabinet(bm)
+    v = len(bm.verts)
     build_plant(bm, open_faces)
+    Parts.others["plant"] = (v, len(bm.verts))
+    v = len(bm.verts)
     build_wall_plant(bm, open_faces)
+    Parts.others["wall_plant"] = (v, len(bm.verts))
+    v = len(bm.verts)
     build_tin(bm)
     build_books(bm)
+    Parts.others["tin_books"] = (v, len(bm.verts))
     build_shelf(bm)
     build_jars(bm)
     build_rail(bm)
+    build_frames(bm, open_faces)
     check_new_parts(bm)
     check_clearance(bm)
+    check_frames(bm)
 
     # Outward normals for the closed solids; leaves and coins are open surfaces with explicit winding, so skip them.
     open_set = set(open_faces)
