@@ -19,8 +19,15 @@ stays flat; the coin leaves of the hanging planter are 12 sided and irregular; t
 sits `WIN_DZ` lower and has no head board. `07_window_lower.py` moves `Window_Glass`, `Window_Sky` and `Rays_Origin` by the
 same amount (this script keeps `Rays_Origin` on the glass, so run 07 once after changing `WIN_DZ`).
 
+Slice D1 (phase 2b, SPEC section 7 layout table) adds a back-wall shelf on two iron brackets with four jars, and a rail with four
+hooks and four hanging mugs. They are new builder functions (`build_shelf`, `build_jars`, `build_rail`), their material slots are
+appended after the original seven (`Mat_Iron`, `Mat_Bag0` to `Mat_Bag3`, plus `Mat_Glass` only when `JAR_GLASS` is "glass"). The
+script prints and checks the bounding box of every new part against the layout table (5 mm) and the plan-view clearance of
+every new part to the two steam columns (15 mm), with the steam numbers read from `src/nook/steamDefaults.ts`.
+
 Run (on a copy first, then on the real file):
   Blender -b tools/blender/nook.blend --python tools/blender/steps/04_room.py -- [output.blend]
+Option `--jar-glass=glass|tinted` overrides `JAR_GLASS` (used by the D1 spike).
 Without an output path the opened file is saved in place.
 
 NOTE: this rebuilds the `Room` mesh and drops the second UV layer `UV_AO` (slice 2.4), so the baked
@@ -29,7 +36,9 @@ is passed after the output path; after a forced run, re-run `05_ao_bake.py` (the
 """
 
 import math
+import os
 import random
+import re
 import sys
 
 import bpy
@@ -202,8 +211,59 @@ COVER_T, SPINE_T, PAGES_INSET = 0.0022, 0.0045, 0.0035
 
 SEGMENTS = 16  # round parts, flat shaded on purpose (low poly)
 
-# Material slot order of the merged Room mesh (never changes).
-ROOM_MATERIALS = ["Mat_Wall", "Mat_Wood", "Mat_Frame", "Mat_Leaf", "Mat_Pot", "Mat_Tin", "Mat_Book"]
+# ---- Slice D1: back wall details (SPEC.md section 7, phase 2b layout table; metres) -----------------
+WALL_FACE = 0.225  # inner face of the back wall (y); new parts stick EMBED into it so no coplanar faces fight
+EMBED = 0.001
+# Shelf: plank x -0.295 to 0.005, top z 0.290, 0.020 thick, 0.070 deep; two L brackets (0.015 wide, 0.045 tall) under it.
+SHELF_X = (-0.295, 0.005)
+SHELF_TOP, SHELF_T, SHELF_DEPTH = 0.290, 0.020, 0.070
+BRACKET_X = (-0.270, -0.035)  # bracket centres
+BRACKET_W, BRACKET_H, BRACKET_REACH, BRACKET_T = 0.015, 0.045, 0.050, 0.006  # width, height, how far the lower leg reaches out, leg thickness
+# Jars: centres, diameter 0.060, glass body 0.090, lid 0.010, contents 0.060 (jar i holds tea i).
+JAR_X = (-0.2575, -0.1825, -0.1075, -0.0325)
+JAR_Y = 0.190
+JAR_BODY_H, JAR_LID_H, JAR_CONTENT_H = 0.090, 0.010, 0.060
+JAR_R, JAR_NECK_R, JAR_SHOULDER = 0.030, 0.027, 0.008  # body radius, radius at the top, height of the tapered shoulder
+JAR_LID_R, JAR_CONTENT_R, JAR_CONTENT_BASE = 0.0295, 0.0265, 0.003  # lid radius, contents radius, contents start above the jar base
+# "glass": transparent Mat_Glass body with the tea colour showing inside; "tinted": opaque body in the tea colour (Mat_Bag).
+# Decided by the D1 spike (DECISIONS.md): transparent glass sorts wrongly against the steam.
+JAR_GLASS = "tinted"
+# Rail: bar x -0.255 to -0.015 at z 0.215 (square section), end posts to the wall, hooks and hanging mugs.
+RAIL_X, RAIL_Z, RAIL_Y, RAIL_SECTION = (-0.255, -0.015), 0.215, 0.198, 0.008  # bar centre line y and section
+HOOK_X = (-0.225, -0.170, -0.115, -0.060)
+HOOK_LEN, HOOK_INTO_CUP, HOOK_R = 0.016, 0.003, 0.0018  # below the bar, extra tip inside the cup, radius (4 sided)
+MUG_TOP_Z, MUG_H, MUG_W = 0.195, 0.070, 0.054  # top of the hanging mugs, height, total width including the handle
+MUG_SIDES = 12
+MUG_PROFILE = [  # (radius, z above the mug base): underside, outer wall (taper), rim, inner wall, inner floor
+    (0.0, 0.0),
+    (0.017, 0.0),
+    (0.0215, 0.070),
+    (0.0185, 0.070),
+    (0.0165, 0.007),
+    (0.0, 0.007),
+]
+MUG_HANDLE_R = 0.0025  # handle tube radius (4 sided)
+# Handle centre line in the mug's frame (x outwards from the axis on the +X side, z above the base).
+MUG_HANDLE_PATH = ((0.019, 0.060), (0.0285, 0.056), (0.0300, 0.040), (0.0285, 0.022), (0.0185, 0.016))
+BOX_TOL = 0.005  # a new part's bounding box must match the layout table within 5 mm
+CLEARANCE_MIN = 0.015  # plan-view distance of every new part to a steam column
+
+# Material slot order of the merged Room mesh. The first seven never change; slice D1 appends after them.
+ROOM_MATERIALS_BASE = ["Mat_Wall", "Mat_Wood", "Mat_Frame", "Mat_Leaf", "Mat_Pot", "Mat_Tin", "Mat_Book"]
+# Materials created by this script when they are missing (Blender-side defaults, look.ts overrides them at runtime, D-009).
+# Mat_Bag0..3 equal TEAS[i].liquidColor in src/lib/teas.ts (look.test.ts compares them).
+NEW_MATERIAL_COLORS = {
+    "Mat_Iron": "#3A3A3A",
+    "Mat_Bag0": "#8A4B2A",
+    "Mat_Bag1": "#B5B84A",
+    "Mat_Bag2": "#E0B84A",
+    "Mat_Bag3": "#B3213F",
+}
+for _arg in sys.argv:
+    if _arg.startswith("--jar-glass="):
+        JAR_GLASS = _arg.split("=", 1)[1]
+assert JAR_GLASS in ("glass", "tinted"), f"JAR_GLASS must be glass or tinted, not {JAR_GLASS}"
+ROOM_MATERIALS = ROOM_MATERIALS_BASE + list(NEW_MATERIAL_COLORS) + (["Mat_Glass"] if JAR_GLASS == "glass" else [])
 IDX = {name: i for i, name in enumerate(ROOM_MATERIALS)}
 
 # Markers that depend on the window (positions only, never renamed).
@@ -284,15 +344,16 @@ def lathe(bm, profile, centre, mat, segments=SEGMENTS, phase=0.0):
     return made
 
 
-def tube(bm, points, radii, sides, mat, phase=0.0, caps=True, smooth=False):
+def tube(bm, points, radii, sides, mat, phase=0.0, caps=True, smooth=False, ref_axis=None):
     """Prism with `sides` faces along a polyline, radius per point (so it can taper). Closed (end caps) unless
-    `caps` is false. With `smooth` the body is shaded smooth (soft round section) and the end caps stay sharp. Normals are fixed
+    `caps` is false. `ref_axis` fixes the reference direction of the ring frames (default: Z, or X where the path is vertical); a path that
+    switches between those two (a handle that bends through the vertical) needs a fixed axis that is never parallel to the path. With `smooth` the body is shaded smooth (soft round section) and the end caps stay sharp. Normals are fixed
     afterwards by the main `recalc_face_normals`."""
     pts = [Vector(p) for p in points]
     rings = []
     for i, p in enumerate(pts):
         t = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
-        ref = Vector((0, 0, 1)) if abs(t.z) < 0.95 else Vector((1, 0, 0))
+        ref = Vector(ref_axis) if ref_axis is not None else (Vector((0, 0, 1)) if abs(t.z) < 0.95 else Vector((1, 0, 0)))
         u = ref.cross(t).normalized()
         v = t.cross(u)
         ring = [
@@ -714,13 +775,242 @@ def build_books(bm):
         z += h
 
 
+
+# ------------------------------------------------------------------ slice D1 parts ----------------
+
+
+class Parts:
+    """Vertex ranges of the new D1 parts (name -> (first index, one past last)), for the bounding box and clearance checks."""
+
+    ranges = {}
+
+
+def tracked(bm, name, fn):
+    """Runs the builder `fn` and records the vertices it created under `name`."""
+    v0 = len(bm.verts)
+    fn()
+    Parts.ranges[name] = (v0, len(bm.verts))
+
+
+def build_shelf(bm):
+    wd, iron = IDX["Mat_Wood"], IDX["Mat_Iron"]
+    y0 = WALL_FACE - SHELF_DEPTH
+    tracked(bm, "shelf_plank", lambda: box(bm, (SHELF_X[0], y0, SHELF_TOP - SHELF_T), (SHELF_X[1], WALL_FACE + EMBED, SHELF_TOP), wd))
+    bottom = SHELF_TOP - SHELF_T
+    for i, bx in enumerate(BRACKET_X):
+        x0, x1 = bx - BRACKET_W / 2, bx + BRACKET_W / 2
+
+        def bracket(x0=x0, x1=x1):
+            box(bm, (x0, WALL_FACE - BRACKET_T, bottom - BRACKET_H + BRACKET_T), (x1, WALL_FACE + EMBED, bottom), iron)  # leg on the wall
+            box(bm, (x0, WALL_FACE - BRACKET_REACH, bottom - BRACKET_T), (x1, WALL_FACE - BRACKET_T, bottom), iron)  # leg under the plank
+            box(bm, (x0, WALL_FACE - BRACKET_T, bottom - BRACKET_H), (x1, WALL_FACE + EMBED, bottom - BRACKET_H + BRACKET_T), iron)  # foot of the wall leg
+
+        tracked(bm, f"bracket_{i}", bracket)
+
+
+def build_jars(bm):
+    wd = IDX["Mat_Wood"]
+    for i, jx in enumerate(JAR_X):
+        base = (jx, JAR_Y, SHELF_TOP)
+        bag = IDX[f"Mat_Bag{i}"]
+        body_profile = [(0.0, 0.0), (JAR_R, 0.0), (JAR_R, JAR_BODY_H - JAR_SHOULDER), (JAR_NECK_R, JAR_BODY_H), (0.0, JAR_BODY_H)]
+        if JAR_GLASS == "glass":
+            tracked(bm, f"jar_{i}_content", lambda: lathe(bm, [(0.0, JAR_CONTENT_BASE), (JAR_CONTENT_R, JAR_CONTENT_BASE), (JAR_CONTENT_R, JAR_CONTENT_BASE + JAR_CONTENT_H), (0.0, JAR_CONTENT_BASE + JAR_CONTENT_H)], base, bag))
+            tracked(bm, f"jar_{i}_body", lambda: lathe(bm, body_profile, base, IDX["Mat_Glass"]))
+        else:
+            tracked(bm, f"jar_{i}_body", lambda: lathe(bm, body_profile, base, bag))
+        lid = [(0.0, JAR_BODY_H), (JAR_LID_R, JAR_BODY_H), (JAR_LID_R, JAR_BODY_H + JAR_LID_H * 0.8), (JAR_NECK_R, JAR_BODY_H + JAR_LID_H), (0.0, JAR_BODY_H + JAR_LID_H)]
+        tracked(bm, f"jar_{i}_lid", lambda: lathe(bm, lid, base, wd))
+
+
+def build_rail(bm):
+    iron, frame = IDX["Mat_Iron"], IDX["Mat_Frame"]
+    h = RAIL_SECTION / 2
+    x0, x1 = RAIL_X
+
+    def bar():
+        box(bm, (x0, RAIL_Y - h, RAIL_Z - h), (x1, RAIL_Y + h, RAIL_Z + h), iron)
+        for px0, px1 in ((x0, x0 + RAIL_SECTION), (x1 - RAIL_SECTION, x1)):  # two standoff posts to the wall
+            box(bm, (px0, RAIL_Y + h, RAIL_Z - h), (px1, WALL_FACE + EMBED, RAIL_Z + h), iron)
+
+    tracked(bm, "rail_bar", bar)
+    bar_bottom = RAIL_Z - h
+    base_z = MUG_TOP_Z - MUG_H
+    for i, hx in enumerate(HOOK_X):
+        # Hook: a thin rod below the bar that ends just inside the cup opening (the cup hangs from it).
+        tracked(bm, f"rail_hook_{i}", lambda hx=hx: tube(bm, [(hx, RAIL_Y, RAIL_Z), (hx, RAIL_Y, bar_bottom - HOOK_LEN - HOOK_INTO_CUP)], [HOOK_R, HOOK_R], 4, iron, phase=math.pi / 4))
+
+        def mug(hx=hx):
+            # The handle sticks out on +X; the bounding box (not the body) is centred on the hook x, MUG_W wide.
+            outer = max(r for r, _z in MUG_PROFILE)
+            reach = max(p[0] for p in MUG_HANDLE_PATH) + MUG_HANDLE_R
+            cx = hx + MUG_W / 2 - reach  # body axis
+            assert abs((cx - outer) - (hx - MUG_W / 2)) < BOX_TOL, "mug body does not fit the layout width"
+            lathe(bm, MUG_PROFILE, (cx, RAIL_Y, base_z), frame, MUG_SIDES)
+            tube(bm, [(cx + px, RAIL_Y, base_z + pz) for px, pz in MUG_HANDLE_PATH], [MUG_HANDLE_R] * len(MUG_HANDLE_PATH), 4, frame, phase=math.pi / 4, ref_axis=(0, 1, 0))
+
+        tracked(bm, f"rail_mug_{i}", mug)
+
+
+def expected_boxes():
+    """Layout table (SPEC.md section 7, phase 2b) as lower/upper corners per part name."""
+    out = {}
+    out["shelf_plank"] = ((SHELF_X[0], WALL_FACE - SHELF_DEPTH, SHELF_TOP - SHELF_T), (SHELF_X[1], WALL_FACE, SHELF_TOP))
+    for i, bx in enumerate(BRACKET_X):
+        out[f"bracket_{i}"] = ((bx - BRACKET_W / 2, WALL_FACE - BRACKET_REACH, SHELF_TOP - SHELF_T - BRACKET_H), (bx + BRACKET_W / 2, WALL_FACE, SHELF_TOP - SHELF_T))
+    for i, jx in enumerate(JAR_X):
+        out[f"jar_{i}_body"] = ((jx - JAR_R, JAR_Y - JAR_R, SHELF_TOP), (jx + JAR_R, JAR_Y + JAR_R, SHELF_TOP + JAR_BODY_H))
+        out[f"jar_{i}_lid"] = ((jx - JAR_R, JAR_Y - JAR_R, SHELF_TOP + JAR_BODY_H), (jx + JAR_R, JAR_Y + JAR_R, SHELF_TOP + JAR_BODY_H + JAR_LID_H))
+        if JAR_GLASS == "glass":
+            out[f"jar_{i}_content"] = ((jx - JAR_CONTENT_R, JAR_Y - JAR_CONTENT_R, SHELF_TOP + JAR_CONTENT_BASE), (jx + JAR_CONTENT_R, JAR_Y + JAR_CONTENT_R, SHELF_TOP + JAR_CONTENT_BASE + JAR_CONTENT_H))
+    h = RAIL_SECTION / 2
+    out["rail_bar"] = ((RAIL_X[0], RAIL_Y - h, RAIL_Z - h), (RAIL_X[1], WALL_FACE, RAIL_Z + h))
+    for i, hx in enumerate(HOOK_X):
+        out[f"rail_hook_{i}"] = ((hx - HOOK_R, RAIL_Y - HOOK_R, RAIL_Z - h - HOOK_LEN), (hx + HOOK_R, RAIL_Y + HOOK_R, RAIL_Z))
+        out[f"rail_mug_{i}"] = ((hx - MUG_W / 2, RAIL_Y - 0.0215, MUG_TOP_Z - MUG_H), (hx + MUG_W / 2, RAIL_Y + 0.0215, MUG_TOP_Z))
+    return out
+
+
+def check_new_parts(bm):
+    """Prints the bounding box of every new part and fails when one leaves its layout box by more than BOX_TOL (5 mm)."""
+    bm.verts.ensure_lookup_table()
+    expected = expected_boxes()
+    missing = set(expected) ^ set(Parts.ranges)
+    if missing:
+        raise SystemExit(f"04_room: layout parts and built parts differ: {sorted(missing)}")
+    bad = []
+    print("[04_room] D1 parts: bounding boxes in metres (lower corner .. upper corner), size in mm, worst deviation from the layout table in mm")
+    for name, (a, b) in Parts.ranges.items():
+        pts = [bm.verts[k].co for k in range(a, b)]
+        lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
+        hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
+        elo, ehi = Vector(expected[name][0]), Vector(expected[name][1])
+        dev = max(max(abs(lo[k] - elo[k]), abs(hi[k] - ehi[k])) for k in range(3))
+        size = (hi - lo) * 1000
+        print(f"  {name:15s} ({lo.x:+.4f} {lo.y:+.4f} {lo.z:+.4f}) .. ({hi.x:+.4f} {hi.y:+.4f} {hi.z:+.4f})  size {size.x:5.1f} x {size.y:5.1f} x {size.z:5.1f}  dev {dev * 1000:4.1f}")
+        if dev > BOX_TOL:
+            bad.append(name)
+    if bad:
+        raise SystemExit(f"04_room: parts outside the layout table by more than {BOX_TOL * 1000:.0f} mm: {bad}")
+
+
+def steam_columns():
+    """The two steam columns as (name, axis x, axis y, base z, height, radius, width base, width power), with the steam numbers read
+    from src/nook/steamDefaults.ts and checked against the width formula in src/lib/steamMath.ts, so they cannot drift silently.
+    The axis comes from the marker Empties in the opened file (never hard-coded)."""
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    look = open(os.path.join(root, "src", "nook", "steamDefaults.ts")).read()
+    maths = open(os.path.join(root, "src", "lib", "steamMath.ts")).read()
+    assert "return base + (1 - base) * Math.pow(Math.min(1, Math.max(0, h)), power)" in maths, "steamWidth in steamMath.ts changed: update steam_width()"
+
+    def block(name):
+        m = re.search(r"export const " + name + r": SteamLook = \{\n(.*?)^\}", look, re.S | re.M)
+        assert m, f"{name} not found in steamDefaults.ts"
+        return m.group(1)
+
+    def field(text, key):
+        m = re.search(r"^\s*" + key + r": ([0-9.]+),", text, re.M)
+        assert m, f"{key} not found"
+        return float(m.group(1))
+
+    tea, kettle = block("STEAM_LOOK_DEFAULTS"), block("KETTLE_STEAM_LOOK")
+    assert re.search(r"^\s*height: KETTLE_HEIGHT_BASE \* KETTLE_STEAM_HEIGHT_FACTOR,", kettle, re.M), "kettle steam height formula changed"
+    kettle_height = float(re.search(r"const KETTLE_HEIGHT_BASE = ([0-9.]+)", look).group(1)) * float(re.search(r"const KETTLE_STEAM_HEIGHT_FACTOR = ([0-9.]+)", look).group(1))
+    cols = []
+    for name, marker, text, height in (("tea", "Steam_Tea", tea, field(tea, "height")), ("kettle", "Steam_Kettle", kettle, kettle_height)):
+        pos = bpy.data.objects[marker].matrix_world.translation
+        cols.append((name, pos.x, pos.y, pos.z, height, field(text, "radius"), field(text, "widthBase"), field(text, "widthPower")))
+    return cols
+
+
+def steam_width(h, base, power):
+    """Twin of `steamWidth` in src/lib/steamMath.ts (the formula is asserted in `steam_columns`)."""
+    return base + (1 - base) * max(0.0, min(1.0, h)) ** power
+
+
+def check_clearance(bm):
+    """Plan-view distance of every new part to the steam columns, in millimetres: the part's points (faces sampled every ~2 mm) against
+    the column's circle at that height, radius = column radius * steamWidth(h). Fails when the smallest is under CLEARANCE_MIN."""
+    cols = steam_columns()
+    for c in cols:
+        print(f"[04_room] steam column {c[0]}: axis ({c[1]:.3f}, {c[2]:.3f}), base z {c[3]:.3f}, height {c[4]:.3f}, radius {c[5]}, width base {c[6]}, power {c[7]}")
+    bm.verts.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+    bm.faces.index_update()
+    face_parts = {}
+    for name, (a, b) in Parts.ranges.items():
+        for v in (bm.verts[k] for k in range(a, b)):
+            for f in v.link_faces:
+                face_parts.setdefault(f.index, name)
+    worst, widest = {}, {}
+    step = 0.002
+    for f in bm.faces:
+        name = face_parts.get(f.index)
+        if name is None:
+            continue
+        vs = [v.co for v in f.verts]
+        for k in range(1, len(vs) - 1):
+            a, b, c = vs[0], vs[k], vs[k + 1]
+            n = max(1, int(max((b - a).length, (c - a).length, (c - b).length) / step))
+            for i in range(n + 1):
+                for j in range(n + 1 - i):
+                    p = a + (b - a) * (i / n) + (c - a) * (j / n)
+                    for col in cols:
+                        cname, cx, cy, cz, height, radius, wb, wp = col
+                        r = radius * steam_width((p.z - cz) / height, wb, wp)
+                        d = math.hypot(p.x - cx, p.y - cy) - r
+                        key = (name, cname)
+                        if d < worst.get(key, 1e9):
+                            worst[key] = d
+                        d_full = math.hypot(p.x - cx, p.y - cy) - radius  # against the widest part of the column at any height
+                        if d_full < widest.get(key, 1e9):
+                            widest[key] = d_full
+    print("[04_room] steam clearance in mm (plan view, part to column surface), smallest per part:")
+    for name in Parts.ranges:
+        print(f"  {name:15s} tea {worst[(name, 'tea')] * 1000:7.1f}   kettle {worst[(name, 'kettle')] * 1000:7.1f}")
+    full = min(widest.items(), key=lambda kv: kv[1])
+    print(f"[04_room] for reference, against the widest part of each column (full radius at any height): {full[1] * 1000:.1f} mm ({full[0][0]} to the {full[0][1]} column)")
+    smallest = min(worst.items(), key=lambda kv: kv[1])
+    print(f"[04_room] smallest steam clearance: {smallest[1] * 1000:.1f} mm ({smallest[0][0]} to the {smallest[0][1]} column), minimum {CLEARANCE_MIN * 1000:.0f} mm")
+    if smallest[1] < CLEARANCE_MIN:
+        raise SystemExit(f"04_room: {smallest[0][0]} is only {smallest[1] * 1000:.1f} mm from the {smallest[0][1]} steam column (minimum {CLEARANCE_MIN * 1000:.0f} mm)")
+
+
 # ------------------------------------------------------------------------------ main ------------
+
+
+def make_material(name, hex_color):
+    """Flat Principled material like the ones of 01_blockout.py (base colour linear, roughness 1, no metal)."""
+    def lin(c):
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    h = hex_color.lstrip("#")
+    r, g, b = (lin(int(h[i : i + 2], 16) / 255.0) for i in (0, 2, 4))
+    mat = bpy.data.materials.new(name)
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (r, g, b, 1.0)
+    bsdf.inputs["Roughness"].default_value = 1.0
+    bsdf.inputs["Metallic"].default_value = 0.0
+    mat.diffuse_color = (r, g, b, 1.0)
+    return mat
+
+
+def setup_extra_slots(room):
+    """Keeps the first seven slots, drops any extra ones from an earlier run and appends the slice D1 materials in ROOM_MATERIALS
+    order (created when missing, existing ones are never recoloured)."""
+    mesh = room.data
+    while len(mesh.materials) > len(ROOM_MATERIALS_BASE):
+        mesh.materials.pop(index=len(mesh.materials) - 1)
+    for name in ROOM_MATERIALS[len(ROOM_MATERIALS_BASE) :]:
+        mat = bpy.data.materials.get(name) or make_material(name, NEW_MATERIAL_COLORS[name])
+        mesh.materials.append(mat)
+    assert [s.material.name for s in room.material_slots] == ROOM_MATERIALS, "Room material slots do not match ROOM_MATERIALS"
 
 
 def main():
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     force = "--force" in argv
-    argv = [a for a in argv if a != "--force"]
+    argv = [a for a in argv if a != "--force" and not a.startswith("--jar-glass=")]
     out = argv[0] if argv else None
 
     room = bpy.data.objects["Room"]
@@ -730,8 +1020,9 @@ def main():
             "04_room: Room already has the UV layer UV_AO (slice 2.4). Rebuilding the mesh would drop it and make "
             "public/models/room_ao.png stale. Pass --force after the output path and re-run 05_ao_bake.py afterwards."
         )
-    assert [s.material.name for s in room.material_slots] == ROOM_MATERIALS, "Room material slots changed"
+    assert [s.material.name for s in room.material_slots][: len(ROOM_MATERIALS_BASE)] == ROOM_MATERIALS_BASE, "the first seven Room material slots changed"
     assert tuple(room.location) == (0.0, 0.0, 0.0), "Room origin is not the world origin"
+    setup_extra_slots(room)
 
     bm = bmesh.new()
     open_faces = []
@@ -742,6 +1033,11 @@ def main():
     build_wall_plant(bm, open_faces)
     build_tin(bm)
     build_books(bm)
+    build_shelf(bm)
+    build_jars(bm)
+    build_rail(bm)
+    check_new_parts(bm)
+    check_clearance(bm)
 
     # Outward normals for the closed solids; leaves and coins are open surfaces with explicit winding, so skip them.
     open_set = set(open_faces)

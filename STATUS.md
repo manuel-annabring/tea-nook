@@ -5,8 +5,8 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 ## Now
 
 - **Current phase:** Phase 2b (Details: back wall, tea box, cup and kettle polish) on branch `phase/2b-details`, started 2026-11-06 (D-078). Phases 1 and 2 and the phase 2 fixes (F1 to F5, G1, G2) are merged into `main`; the Git history was rewritten on 2026-11-05 (the old history is in the bundle `tea-nook-before-rewrite.bundle` next to the project folder, safe to delete once Manuel is satisfied).
-- **State:** D0 is done: layout kept as the planner default (D-083), SPEC section 5 amendment **approved by Manuel on 2026-11-06** (D-084), phase 2b specified in SPEC section 7, slice 3.1 extended for the tea bags. D1 to D5 are not started. Phase 3 is not started.
-- **Next action:** D1 to D5 run autonomously (a fresh-context subagent per slice, model and effort from the SPEC table), then the reviewer and `REVIEW-phase-2b.md`.
+- **State:** D0 is done: layout kept as the planner default (D-083), SPEC section 5 amendment **approved by Manuel on 2026-11-06** (D-084), phase 2b specified in SPEC section 7, slice 3.1 extended for the tea bags. D1 is done (shelf, jars, rail, hanging mugs). D2 to D5 are not started. Phase 3 is not started.
+- **Next action:** D2 to D5 run autonomously (a fresh-context subagent per slice, model and effort from the SPEC table), then the reviewer and `REVIEW-phase-2b.md`.
 - **Blockers:** none.
 
 ## Slices
@@ -50,7 +50,7 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 | Slice | Name | Mode | Status | Commit | Notes |
 |---|---|---|---|---|---|
 | D0 | Layout and contract amendment | collaborative | done | f9cbd51 + approval commit | D-078 to D-084. Layout from the interactive planner (default kept). Amendment approved by Manuel 2026-11-06 |
-| D1 | Back wall: shelf, jars, rail, hanging mugs | autonomous | todo | | |
+| D1 | Back wall: shelf, jars, rail, hanging mugs | autonomous | done | commit "D1: shelf, jars, rail and hanging mugs" | D-085 to D-091. `Room` still one mesh (12 slots: the 7 old ones, then `Mat_Iron`, `Mat_Bag0..3`; 4012 triangles), 18 contract materials (max 20), whole contract-checked model 5462 triangles, GLB 333 KB (limit 3 MB), 36 draw calls with the shadow pass and 13976 triangles in the app at hero (budget under 50). Bounding boxes of all 20 new parts within 3.0 mm of the layout table (script prints them and fails above 5 mm). Steam clearance (script, per-height radius from `steamDefaults.ts`): smallest 41.8 mm (shelf plank to the kettle column); 17.6 mm even against the widest part of the column at any height. Jar glass: **opaque tinted** (D-085). `room_ao.png` from two `04 --force` plus `05` runs is byte-identical (md5 5a19b9c8e2261fc4c9dd0fe6cba52970), 1024 x 1024, 50 % coverage, about 4.7 mm per texel (stays 1024, D-089). Evidence (names only): `review/phase-2b/d1-hero.jpg`, `d1-front.jpg`, `d1-side.jpg`, `d1-preview-{iso,front,side,top}.png`, spike `spike-{glass,tinted}-az{0,25,40}.jpg`. Weak points: the wind drift of the kettle steam is not part of the clearance maths; the hanging mugs hang on a rod that ends inside the cup opening (no real handle hook); the plank end (x -0.295) overlaps the window casing by 3 mm (hidden, same merged mesh); at the hero view the four mugs are about 14 px wide |
 | D2 | Picture frames with pictograms | autonomous | todo | | |
 | D3 | Tea box and the four TeaBag objects | autonomous | todo | | |
 | D4 | Cup, saucer and kettle polish | autonomous | todo | | |
@@ -73,6 +73,15 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 - Plan is Pro (5-hour window, weekly limit, extra usage off). Check `get_usage` before each slice.
 
 ## Notes (ideas and out-of-scope findings, not work)
+
+- Slice D1, what I did in Blender and why (all headless, in `04_room.py`):
+  - Shelf and brackets: the plank is a box and each L bracket is three boxes (a leg on the wall, a leg under the plank, a small foot), all `Mat_Wood` or `Mat_Iron`. Everything that touches the wall reaches 1 mm into it, because two faces in the same plane (coplanar faces) flicker against each other (z-fighting) and the AO bake would see a fake seam.
+  - Jars: a lathe (a profile of radius and height points spun around the Z axis with 16 segments, the same `lathe` helper as the tin and pots) gives the body with a small shoulder and a separate lid. In the final version the whole body is one opaque `Mat_Bag0..3` lathe, so each jar carries its tea colour. Flat shading is kept: the facets are the low-poly look.
+  - Rail and mugs: the bar is a box with two stand-off posts, the hooks are 4 sided rods, each cup is a 12 sided lathe (outer wall, rim, inner wall, floor) plus a 4 sided handle tube swept along five points. A tube builds its rings from a reference direction; the old rule (Z, or X when the path is steep) flips halfway along a handle and twists the tube into zero-area faces, so `tube` got an optional fixed `ref_axis` (existing callers unchanged).
+  - Materials: the five new materials are created by `04_room.py` when missing (a material is a datablock; the object only has slots that point at it) and appended after the seven old slots, so the old `material_index` values stay valid. `05_ao_bake.py` now only asserts that the first seven slots are unchanged.
+  - Checks inside the script: every new part has an expected box from the layout table (it fails above 5 mm) and a plan-view clearance to both steam columns (fails under 15 mm), with the steam numbers parsed from `src/nook/steamDefaults.ts` and the width formula asserted against `steamMath.ts`.
+- Slice D1 hint for D2 to D5: `Mat_Glass` was NOT added to the `Room` slots (jars are opaque). If glass is ever wanted in `Room`, note that three sorts transparent objects by object origin, and the `Room` meshes sit at the origin, nearer to the camera than the kettle steam at every allowed azimuth, so glass would be drawn over the steam.
+- Idea (not built): the hero view shows the jar tops and mugs small (about 14 px per mug). If D5 framing allows, a slightly closer default distance would help; not done.
 
 - Phase 3 hints from the reviewer: `applyLook` writes uniforms directly, so for damped tea changes keep target values in the store and damp inside `tickSteam`; damp the `Mat_Tea` colour on the cached material by name; give steam meshes `raycast={() => null}` before adding the Mug click handler; `Mug` handler needs `stopPropagation()` and cursor reset.
 - `PointerProbe` caches marker lookups on first move and never invalidates them: after a dev hot reload that remounts the model, reload the page if the pointer push stops. `src/index.css` hard-codes the background `#e9dfcb`, duplicating `BACKGROUND_COLOR` in look.ts. `nook.blend` is tracked uncompressed (about 850 KB); phase 2 saves grow history.

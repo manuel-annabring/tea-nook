@@ -43,13 +43,18 @@ MATERIALS = [
     "Mat_KettleDetail",
     "Mat_Glass",
     "Mat_Sky",
+    "Mat_Iron",  # 2026-11-06 amendment (phase 2b): shelf brackets, rail, hooks
+    "Mat_Bag0",  # ... and one per tea bag / jar content (colour = TEAS[i].liquidColor)
+    "Mat_Bag1",
+    "Mat_Bag2",
+    "Mat_Bag3",
 ]
 
-# Budgets (SPEC.md section 5). Plain `NAME = number` lines (parsed by the vitest twin test).
+# Budgets (SPEC.md section 5; MAX_MATERIALS was 14 until the 2026-11-06 amendment, draw calls under 50 are checked in the app). Plain `NAME = number` lines (parsed by the vitest twin test).
 TRIANGLE_TARGET = 30000
 TRIANGLE_CAP = 100000
 GLB_MAX_MB = 3
-MAX_MATERIALS = 14
+MAX_MATERIALS = 20
 ORIGIN_TOL_MM = 1
 
 # Room UV layers (SPEC.md section 5, AO amendment of 2026-11-04): `UVMap` first (placeholder box projection),

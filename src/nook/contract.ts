@@ -51,6 +51,12 @@ export const MATERIAL_NAMES = [
   'Mat_KettleDetail',
   'Mat_Glass',
   'Mat_Sky',
+  // Added by the 2026-11-06 amendment (phase 2b).
+  'Mat_Iron',
+  'Mat_Bag0',
+  'Mat_Bag1',
+  'Mat_Bag2',
+  'Mat_Bag3',
 ] as const
 
 export type MaterialName = (typeof MATERIAL_NAMES)[number]
@@ -71,7 +77,7 @@ export const BUDGETS = {
   triangleTarget: 30000,
   triangleCap: 100000,
   glbMaxMb: 3,
-  maxMaterials: 14,
+  maxMaterials: 20,
   originToleranceMm: 1,
 } as const
 

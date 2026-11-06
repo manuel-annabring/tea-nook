@@ -1,9 +1,18 @@
 // Every tweakable look value lives here (or in a file re-exported below). Components read from this module, never inline.
 // Colors are sRGB hex. Palette keys are the contract material names (SPEC section 5).
 
+import { TEAS } from '../lib/teas.ts'
+
 export { TEAS, type Tea } from '../lib/teas.ts'
 export { STEAM_LOOK_DEFAULTS, KETTLE_STEAM_LOOK, KETTLE_STEAM_DENSITY_FACTOR, KETTLE_STEAM_HEIGHT_FACTOR, type SteamLook, type SteamNoise } from '../nook/steamDefaults.ts'
 export { STEAM_DEFAULTS, type SteamParams } from '../lib/steamMath.ts'
+
+/** Liquid colour of tea `index`: the tea bags and the jar contents (`Mat_Bag0..3`) use the same colour language as the tea in the mug. */
+function teaColor(index: number): string {
+  const tea = TEAS[index]
+  if (!tea) throw new Error(`TEAS has no entry ${index}`)
+  return tea.liquidColor
+}
 
 /** Material color by contract material name. SPEC section 3 for the six main ones; the rest are placeholders until the references arrive. */
 export const PALETTE = {
@@ -21,6 +30,13 @@ export const PALETTE = {
   Mat_KettleDetail: '#5E7F6C',
   Mat_Glass: '#CFE6F2',
   Mat_Sky: '#BFD8F0',
+  // Phase 2b (SPEC section 5 amendment of 2026-11-06): dark graphite for the shelf brackets, rail and hooks ...
+  Mat_Iron: '#3A3A3A',
+  // ... and one colour per tea (jar contents and, from slice D3, the tea bags), derived from TEAS so the two never drift.
+  Mat_Bag0: teaColor(0),
+  Mat_Bag1: teaColor(1),
+  Mat_Bag2: teaColor(2),
+  Mat_Bag3: teaColor(3),
 } as const
 
 export type MaterialName = keyof typeof PALETTE

@@ -5,7 +5,7 @@ Opens the .blend Blender was started with and does two things, headless:
 1. UNWRAP. Adds (or rebuilds) a second UV layer `UV_AO` on the `Room` mesh and unwraps it into
    non-overlapping islands that fit the 0..1 square (every face gets its own piece of texture, no
    tiling, so the baked light can differ per face). The first layer `UVMap` is not touched and stays
-   first. `Room` geometry, object, origin, transforms and the 7 material slots are untouched.
+   first. `Room` geometry, object, origin, transforms and the material slots are untouched.
 2. BAKE. Renders ambient occlusion with Cycles (CPU) into a temporary 1024 x 1024 image on `UV_AO`,
    levels it so it multiplies gently (white = no occlusion), blurs the sampling noise a little, and
    saves `public/models/room_ao.png` (8 bit, Non-Color). `Mug`, `Kettle` and `TeaSurface` are in the
@@ -55,7 +55,7 @@ GAIN, GAMMA, FLOOR = 0.85, 1.0, 0.40
 # three.js reads only the R channel of an aoMap; G and B get a little extra darkening so the PNG looks
 # warm-neutral grey when opened in an image viewer (cosmetic).
 WARM_G, WARM_B = 1.05, 1.18
-ROOM_MATERIALS = ["Mat_Wall", "Mat_Wood", "Mat_Frame", "Mat_Leaf", "Mat_Pot", "Mat_Tin", "Mat_Book"]
+ROOM_MATERIALS_BASE = ["Mat_Wall", "Mat_Wood", "Mat_Frame", "Mat_Leaf", "Mat_Pot", "Mat_Tin", "Mat_Book"]  # slice D1 appends more slots after these
 BURIED_BELOW = 0.30  # raw AO under this is pure FLOOR after levelling; a face with no pixel above it is buried
 KEEP_PX = 2  # bake margin kept (not whitened) around visible islands; half the packing gap, so it never reaches the next island
 FLOOR_FACE_AREA = 0.5  # m2: up-facing faces bigger than this are floors and never count as buried
@@ -320,7 +320,7 @@ def main():
     assert TEX_SIZE <= 2048, "contract: AO texture is 1024 x 1024, 2048 at most"
     scene = bpy.context.scene
     room = bpy.data.objects["Room"]
-    assert [s.material.name for s in room.material_slots] == ROOM_MATERIALS, "Room material slots changed"
+    assert [s.material.name for s in room.material_slots][: len(ROOM_MATERIALS_BASE)] == ROOM_MATERIALS_BASE, "the first seven Room material slots changed"
     assert tuple(room.location) == (0.0, 0.0, 0.0), "Room origin is not the world origin"
     assert all(n in bpy.data.objects for n in ("Mug", "Kettle", "TeaSurface") + tuple(HIDE_FOR_BAKE))
     tri_before = sum(len(p.vertices) - 2 for p in room.data.polygons)
