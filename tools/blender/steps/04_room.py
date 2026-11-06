@@ -29,6 +29,10 @@ Slice D2 adds three picture frames on the back wall (`build_frames`: Mat_Wood bo
 extruded 2 mm out of the panel as flat polygons in Mat_Pot and Mat_Leaf). `check_frames` prints and asserts the depth, the pictogram raise,
 the separation from every other part and the apparent steam table of the D0 planner formula.
 
+Slice D3 adds the body of the tea box on the worktop (`build_tea_box`: a solid base, front and back walls, two end walls and three
+dividers, all Mat_Wood, four slots whose centres come from `tools/blender/tea_layout.py`). The four packets are NOT part of `Room`: they are
+the objects `TeaBag_0..3` made by `08_tea_bags.py`. `check_tea_box` prints the clearance to the mug, the planned saucer, the kettle and the tin.
+
 Run (on a copy first, then on the real file):
   Blender -b tools/blender/nook.blend --python tools/blender/steps/04_room.py -- [output.blend]
 Option `--jar-glass=glass|tinted` overrides `JAR_GLASS` (used by the D1 spike).
@@ -48,6 +52,9 @@ import sys
 import bpy
 import bmesh
 from mathutils import Matrix, Quaternion, Vector
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+import tea_layout as tea  # noqa: E402  (box and bag layout shared with 08_tea_bags.py)
 
 # ------------------------------------------------------------------ parameters (metres) -------
 # Layout numbers are the ones of 01_blockout.py (the composition of slice 2.0); keep them in step.
@@ -270,6 +277,9 @@ CUP_HANDLE = dict(centre=(0.025, 0.0105), r_out=0.0125, r_in=0.0070, steps=6)
 LEAF_LEN, LEAF_WIDTH, LEAF_GAP, LEAF_STEM, LEAF_STEM_W, LEAF_TILT_DEG = 0.066, 0.038, 0.0014, 0.012, 0.0030, 25.0
 LEAF_STATIONS = (0.14, 0.30, 0.46, 0.62, 0.78, 0.91)  # blade outline stations along the length (fractions)
 HEART_WIDTH, HEART_POINTS = 0.048, 16
+# ---- Slice D3: tea box body (layout in tools/blender/tea_layout.py; SPEC.md section 7 layout table "Tea box") ----------------
+SAUCER_R = 0.055  # planned saucer radius around the mug (slice D4)
+TEA_BOX_GAP_MIN = 0.020  # box to mug, planned saucer, kettle and tin: at least 20 mm
 BOX_TOL = 0.005  # a new part's bounding box must match the layout table within 5 mm
 CLEARANCE_MIN = 0.015  # plan-view distance of every new part to a steam column
 
@@ -965,6 +975,35 @@ def build_frames(bm, open_faces):
         tracked(bm, f"frame_{name}", frame)
 
 
+def tea_box_slots():
+    """x ranges of the four slots, from the bag centres of tea_layout.py."""
+    return [(bx - tea.SLOT_W / 2, bx + tea.SLOT_W / 2) for bx in tea.BAG_X]
+
+
+def build_tea_box(bm):
+    """Open top box in Mat_Wood: a solid base up to BOX_FLOOR (the slot floor), then front and back wall, two end walls and three dividers
+    up to the rim. Every wall adjoins its neighbours without overlapping, so no coplanar faces fight."""
+    wd = IDX["Mat_Wood"]
+    cx, cy = tea.BOX_CENTER
+    sx, sy, sz = tea.BOX_SIZE
+    x0, x1, y0, y1 = cx - sx / 2, cx + sx / 2, cy - sy / 2, cy + sy / 2
+    f, w = tea.BOX_FLOOR, tea.BOX_WALL
+    slots = tea_box_slots()
+    assert slots[0][0] > x0 and slots[-1][1] < x1, "tea box slots do not fit the box"
+    assert all(slots[i + 1][0] > slots[i][1] for i in range(3)), "tea box slots overlap"
+    # walls between the slots: left end wall, three dividers, right end wall
+    spans = [(x0, slots[0][0])] + [(slots[i][1], slots[i + 1][0]) for i in range(3)] + [(slots[-1][1], x1)]
+
+    def body():
+        box(bm, (x0, y0, 0.0), (x1, y1, f), wd)  # base
+        box(bm, (x0, y0, f), (x1, y0 + w, sz), wd)  # front wall (towards the camera, -Y)
+        box(bm, (x0, y1 - w, f), (x1, y1, sz), wd)  # back wall
+        for a, b in spans:
+            box(bm, (a, y0 + w, f), (b, y1 - w, sz), wd)
+
+    tracked(bm, "tea_box", body)
+
+
 def expected_boxes():
     """Layout table (SPEC.md section 7, phase 2b) as lower/upper corners per part name."""
     out = {}
@@ -983,6 +1022,8 @@ def expected_boxes():
         out[f"rail_mug_{i}"] = ((hx - MUG_W / 2, RAIL_Y - 0.0215, MUG_TOP_Z - MUG_H), (hx + MUG_W / 2, RAIL_Y + 0.0215, MUG_TOP_Z))
     for name, ((x0, x1), (z0, z1), _p, _m) in FRAMES.items():
         out[f"frame_{name}"] = ((x0, WALL_FACE - FRAME_DEPTH, z0), (x1, WALL_FACE, z1))
+    bx, by = tea.BOX_CENTER
+    out["tea_box"] = ((bx - tea.BOX_SIZE[0] / 2, by - tea.BOX_SIZE[1] / 2, 0.0), (bx + tea.BOX_SIZE[0] / 2, by + tea.BOX_SIZE[1] / 2, tea.BOX_SIZE[2]))
     return out
 
 
@@ -994,7 +1035,7 @@ def check_new_parts(bm):
     if missing:
         raise SystemExit(f"04_room: layout parts and built parts differ: {sorted(missing)}")
     bad = []
-    print("[04_room] D1 and D2 parts: bounding boxes in metres (lower corner .. upper corner), size in mm, worst deviation from the layout table in mm")
+    print("[04_room] D1 to D3 parts: bounding boxes in metres (lower corner .. upper corner), size in mm, worst deviation from the layout table in mm")
     for name, (a, b) in Parts.ranges.items():
         pts = [bm.verts[k].co for k in range(a, b)]
         lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
@@ -1007,6 +1048,59 @@ def check_new_parts(bm):
             bad.append(name)
     if bad:
         raise SystemExit(f"04_room: parts outside the layout table by more than {BOX_TOL * 1000:.0f} mm: {bad}")
+
+
+def check_tea_box(bm):
+    """Slice D3 checks: the box against the layout table, the gap to mug, planned saucer, kettle and tin (at least TEA_BOX_GAP_MIN), the
+    slot play around a bag and, when the TeaBag objects already exist in the file, that every bag fits its slot and sticks out of the rim."""
+    bm.verts.ensure_lookup_table()
+    a, b = Parts.ranges["tea_box"]
+    pts = [bm.verts[k].co for k in range(a, b)]
+    lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
+    hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
+    centre = ((lo.x + hi.x) / 2, (lo.y + hi.y) / 2)
+    print(f"[04_room] D3 tea box: centre ({centre[0]:.4f}, {centre[1]:.4f}) vs layout ({tea.BOX_CENTER[0]}, {tea.BOX_CENTER[1]}), size "
+          f"{(hi.x - lo.x) * 1000:.1f} x {(hi.y - lo.y) * 1000:.1f} x {(hi.z - lo.z) * 1000:.1f} mm, {len(tea_box_slots())} slots, rim z {hi.z:.3f}")
+    assert max(abs(centre[0] - tea.BOX_CENTER[0]), abs(centre[1] - tea.BOX_CENTER[1])) < BOX_TOL, "tea box centre is off the layout table"
+
+    def world_box(ob):
+        corners = [ob.matrix_world @ Vector(c) for c in ob.bound_box]
+        for child in ob.children_recursive:
+            corners += [child.matrix_world @ Vector(c) for c in child.bound_box]
+        return (Vector((min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners))),
+                Vector((max(c.x for c in corners), max(c.y for c in corners), max(c.z for c in corners))))
+
+    def sep_to(olo, ohi):  # gap between two boxes in plan view (x, y); negative = overlap
+        return max(max(olo[k] - hi[k], lo[k] - ohi[k]) for k in (0, 1))
+
+    print("[04_room] D3 tea box clearance in mm (plan view, box to part; minimum {:.0f}):".format(TEA_BOX_GAP_MIN * 1000))
+    gaps = {}
+    for name in ("Mug", "Kettle"):
+        gaps[name + " (bounding box, handle and spout included)"] = sep_to(*world_box(bpy.data.objects[name]))
+    mug = bpy.data.objects["Mug"].location
+    nearest = (min(max(mug.x, lo.x), hi.x), min(max(mug.y, lo.y), hi.y))  # point of the box footprint closest to the mug axis
+    gaps[f"planned saucer (radius {SAUCER_R * 1000:.0f} mm around the mug axis)"] = math.hypot(nearest[0] - mug.x, nearest[1] - mug.y) - SAUCER_R
+    tin_lo, tin_hi = Vector((TIN_XY[0] - 0.05, TIN_XY[1] - 0.05, 0.0)), Vector((TIN_XY[0] + 0.05, TIN_XY[1] + 0.05, 0.1))
+    gaps["tin (loose 100 mm square around its axis)"] = sep_to(tin_lo, tin_hi)
+    for label, g in gaps.items():
+        print(f"  {label:60s} {g * 1000:7.1f}")
+        assert g >= TEA_BOX_GAP_MIN, f"tea box is only {g * 1000:.1f} mm from {label}"
+
+    slots = tea_box_slots()
+    play_x = (tea.SLOT_W - tea.BAG_W) / 2
+    play_y = (tea.BOX_SIZE[1] - 2 * tea.BOX_WALL - tea.BAG_D) / 2
+    print(f"[04_room] D3 slot play around a bag: {play_x * 1000:.1f} mm each side in x, {play_y * 1000:.1f} mm front and back, "
+          f"slot depth {(tea.BOX_SIZE[2] - tea.BOX_FLOOR) * 1000:.0f} mm, bag sticks out {(tea.BAG_BASE_Z + tea.BAG_H - tea.BOX_SIZE[2]) * 1000:.0f} mm above the rim at rest")
+    assert play_x >= 0.0005 and play_y >= 0.0005, "a bag does not fit its slot"
+    for i in range(4):
+        ob = bpy.data.objects.get(f"TeaBag_{i}")
+        if ob is None:
+            print(f"  TeaBag_{i}: not in the file yet (run 08_tea_bags.py)")
+            continue
+        blo, bhi = world_box(ob)
+        ok = slots[i][0] <= blo.x and bhi.x <= slots[i][1] and lo.y + tea.BOX_WALL <= blo.y and bhi.y <= hi.y - tea.BOX_WALL and abs(blo.z - tea.BOX_FLOOR) < 1e-4
+        print(f"  TeaBag_{i}: x {blo.x:.4f}..{bhi.x:.4f} in slot {slots[i][0]:.4f}..{slots[i][1]:.4f}, y {blo.y:.4f}..{bhi.y:.4f}, z {blo.z:.4f}..{bhi.z:.4f}: {'fits' if ok else 'DOES NOT FIT'}")
+        assert ok, f"TeaBag_{i} does not fit its slot"
 
 
 def steam_columns():
@@ -1233,9 +1327,11 @@ def main():
     build_jars(bm)
     build_rail(bm)
     build_frames(bm, open_faces)
+    build_tea_box(bm)
     check_new_parts(bm)
     check_clearance(bm)
     check_frames(bm)
+    check_tea_box(bm)
 
     # Outward normals for the closed solids; leaves and coins are open surfaces with explicit winding, so skip them.
     open_set = set(open_faces)

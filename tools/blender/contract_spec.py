@@ -14,6 +14,10 @@ OBJECTS = [
     ("Steam_Tea", "EMPTY", "Mug"),
     ("Kettle", "MESH", None),
     ("Steam_Kettle", "EMPTY", "Kettle"),
+    ("TeaBag_0", "MESH", None),  # 2026-11-06 amendment (phase 2b): one packet per tea, material Mat_Bag<i>, origin at the base centre
+    ("TeaBag_1", "MESH", None),
+    ("TeaBag_2", "MESH", None),
+    ("TeaBag_3", "MESH", None),
     ("Window_Glass", "MESH", None),
     ("Window_Sky", "MESH", None),
     ("Rays_Origin", "EMPTY", None),
@@ -27,6 +31,9 @@ REQUIRED_NAMES = [name for name, _type, _parent in OBJECTS]
 # Marker Empties: only their position carries meaning (identity rotation, scale 1).
 MARKER_NAMES = [name for name, type_, _parent in OBJECTS if type_ == "EMPTY"]
 MESH_NAMES = [name for name, type_, _parent in OBJECTS if type_ == "MESH"]
+# Tea bag packets (slice D3): each owns exactly one material, Mat_Bag<i>, and has its origin at the centre of its base.
+TEA_BAG_NAMES = [f"TeaBag_{i}" for i in range(4)]
+TEA_BAG_MATERIALS = {f"TeaBag_{i}": f"Mat_Bag{i}" for i in range(4)}
 
 # Material names are fixed. One per line (parsed by the vitest twin test).
 MATERIALS = [

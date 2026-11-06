@@ -130,6 +130,12 @@ export const SHADOW = {
   bias: -0.0004,
   normalBias: 0.003,
   margin: 0.01,
+  /**
+   * Do the four tea bag packets (`TeaBag_0..3`, slice D3) cast a shadow? No: each caster is one more draw call in the shadow
+   * pass and a packet's shadow would fall on the box and its neighbours, a few millimetres of darkening nobody sees (D-099).
+   * They always receive, so the box rim and the window mullion can shade them.
+   */
+  teaBagsCast: false,
 } as const
 
 /**

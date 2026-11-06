@@ -21,4 +21,8 @@ describe('assertContract', () => {
   it('throws an error naming the missing node', () => {
     expect(() => assertContract(stubScene('Steam_Kettle'))).toThrow(/Steam_Kettle/)
   })
+
+  it('throws an error naming a missing tea bag', () => {
+    expect(() => assertContract(stubScene('TeaBag_2'))).toThrow(/TeaBag_2/)
+  })
 })

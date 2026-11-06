@@ -18,6 +18,11 @@ export const CONTRACT_OBJECTS = [
   { name: 'Steam_Tea', type: 'EMPTY', parent: 'Mug' },
   { name: 'Kettle', type: 'MESH', parent: null },
   { name: 'Steam_Kettle', type: 'EMPTY', parent: 'Kettle' },
+  // Added by the 2026-11-06 amendment (phase 2b): one tea bag packet per tea, origin at the base centre, material Mat_Bag<i>.
+  { name: 'TeaBag_0', type: 'MESH', parent: null },
+  { name: 'TeaBag_1', type: 'MESH', parent: null },
+  { name: 'TeaBag_2', type: 'MESH', parent: null },
+  { name: 'TeaBag_3', type: 'MESH', parent: null },
   { name: 'Window_Glass', type: 'MESH', parent: null },
   { name: 'Window_Sky', type: 'MESH', parent: null },
   { name: 'Rays_Origin', type: 'EMPTY', parent: null },
@@ -30,6 +35,9 @@ export const CONTRACT_OBJECTS = [
 export type NodeName = (typeof CONTRACT_OBJECTS)[number]['name']
 
 export const REQUIRED_NODE_NAMES: readonly NodeName[] = CONTRACT_OBJECTS.map((o) => o.name)
+
+/** The four tea bag packets, index = tea index in `TEAS` (click targets from phase 3). */
+export const TEA_BAG_NAMES = ['TeaBag_0', 'TeaBag_1', 'TeaBag_2', 'TeaBag_3'] as const satisfies readonly NodeName[]
 
 /** Marker Empties: only their position carries meaning (read it from the marker, never hard-code). */
 export const MARKER_NAMES: readonly NodeName[] = CONTRACT_OBJECTS.filter((o) => o.type === 'EMPTY').map(

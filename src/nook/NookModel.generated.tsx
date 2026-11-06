@@ -28,6 +28,10 @@ type GLTFResult = GLTF & {
     Room_10: THREE.Mesh
     Room_11: THREE.Mesh
     Room_12: THREE.Mesh
+    TeaBag_0: THREE.Mesh
+    TeaBag_1: THREE.Mesh
+    TeaBag_2: THREE.Mesh
+    TeaBag_3: THREE.Mesh
     Window_Glass: THREE.Mesh
     Window_Sky: THREE.Mesh
   }
@@ -87,6 +91,10 @@ export function Model(props: ThreeElements['group']) {
           <mesh name="Room_11" geometry={nodes.Room_11.geometry} material={materials.Mat_Bag2} />
           <mesh name="Room_12" geometry={nodes.Room_12.geometry} material={materials.Mat_Bag3} />
         </group>
+        <mesh name="TeaBag_0" geometry={nodes.TeaBag_0.geometry} material={materials.Mat_Bag0} position={[0.145, 0.015, 0.15]} />
+        <mesh name="TeaBag_1" geometry={nodes.TeaBag_1.geometry} material={materials.Mat_Bag1} position={[0.175, 0.015, 0.15]} />
+        <mesh name="TeaBag_2" geometry={nodes.TeaBag_2.geometry} material={materials.Mat_Bag2} position={[0.205, 0.015, 0.15]} />
+        <mesh name="TeaBag_3" geometry={nodes.TeaBag_3.geometry} material={materials.Mat_Bag3} position={[0.235, 0.015, 0.15]} />
         <mesh name="Window_Glass" geometry={nodes.Window_Glass.geometry} material={materials.Mat_Glass} position={[-0.31, 0.23, 0]} />
         <mesh name="Window_Sky" geometry={nodes.Window_Sky.geometry} material={materials.Mat_Sky} position={[-0.36, 0.23, 0]} />
       </group>

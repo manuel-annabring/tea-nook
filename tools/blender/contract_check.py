@@ -115,6 +115,16 @@ def run_check():
                 f"{name}: origin must be at the center of its base within {spec.ORIGIN_TOL_MM} mm "
                 f"(base center is at {base.x*1000:.1f}, {base.y*1000:.1f}, {base.z*1000:.1f} mm from the origin)"
             )
+    for name in spec.TEA_BAG_NAMES:  # slice D3: a packet's origin is the centre of its base, like Mug and Kettle
+        o = ok_meshes.get(name)
+        if o is None:
+            continue
+        base = _base_center(o)
+        if abs(base.x) > ORIGIN_TOL or abs(base.y) > ORIGIN_TOL or abs(base.z) > ORIGIN_TOL:
+            errors.append(
+                f"{name}: origin must be at the center of its base within {spec.ORIGIN_TOL_MM} mm "
+                f"(base center is at {base.x*1000:.1f}, {base.y*1000:.1f}, {base.z*1000:.1f} mm from the origin)"
+            )
     for name in ("TeaSurface", "Window_Glass", "Window_Sky"):
         o = ok_meshes.get(name)
         if o is None:
@@ -160,6 +170,12 @@ def run_check():
     for o in meshes:
         if not any(s.material for s in o.material_slots):
             errors.append(f"{o.name}: no material")
+    for name, want in spec.TEA_BAG_MATERIALS.items():  # slice D3: exactly one material each, its own
+        o = objs.get(name)
+        if o is not None and o.type == "MESH":
+            have = [s.material.name if s.material else None for s in o.material_slots]
+            if have != [want]:
+                errors.append(f"{name}: must have exactly the material {want} (has {have})")
     if len(used) > spec.MAX_MATERIALS:
         errors.append(f"{len(used)} materials in use, budget is {spec.MAX_MATERIALS}")
 

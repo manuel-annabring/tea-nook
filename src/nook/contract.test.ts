@@ -7,6 +7,7 @@ import {
   MARKER_NAMES,
   MATERIAL_NAMES,
   REQUIRED_NODE_NAMES,
+  TEA_BAG_NAMES,
   ROOM_UV_AO_LAYER,
   ROOM_UV_LAYER,
 } from './contract.ts'
@@ -50,6 +51,13 @@ describe('model contract twin (contract.ts vs tools/blender/contract_spec.py)', 
     expect(pyObjects.map((o) => o.name)).toEqual([...REQUIRED_NODE_NAMES])
   })
 
+  it('lists the tea bag packets and their materials the same way', () => {
+    expect(TEA_BAG_NAMES).toEqual(['TeaBag_0', 'TeaBag_1', 'TeaBag_2', 'TeaBag_3'])
+    expect(specSource).toContain('TEA_BAG_NAMES = [f"TeaBag_{i}" for i in range(4)]')
+    expect(specSource).toContain('TEA_BAG_MATERIALS = {f"TeaBag_{i}": f"Mat_Bag{i}" for i in range(4)}')
+    TEA_BAG_NAMES.forEach((_n, i) => expect(pyMaterials).toContain(`Mat_Bag${i}`))
+  })
+
   it('lists the same marker Empties', () => {
     expect(pyObjects.filter((o) => o.type === 'EMPTY').map((o) => o.name)).toEqual([...MARKER_NAMES])
   })
@@ -84,6 +92,9 @@ describe('model contract twin (contract.ts vs tools/blender/contract_spec.py)', 
     expect(parents.TeaSurface).toBe('Mug')
     expect(parents.Steam_Tea).toBe('Mug')
     expect(parents.Steam_Kettle).toBe('Kettle')
+    // The tea bags are free-standing meshes (phase 3 lifts and clicks them), one per tea.
+    expect(TEA_BAG_NAMES.map((n) => parents[n])).toEqual([null, null, null, null])
+    expect(pyObjects.filter((o) => o.name?.startsWith('TeaBag_')).map((o) => o.name)).toEqual([...TEA_BAG_NAMES])
     expect(MATERIAL_NAMES.length).toBeLessThanOrEqual(BUDGETS.maxMaterials)
   })
 })
