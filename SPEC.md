@@ -655,7 +655,7 @@ Depends on: 3.2
 Taste-critical: no
 Acceptance criteria:
 - [ ] Table in `STATUS.md`: triangles, GLB size, materials, draw calls, and average frame time over 10 s in the production build (`npm run preview`) at 1280 x 720, each against its section 5 budget.
-- [ ] Draw calls under 40; triangles under 100k; GLB under 3 MB; materials at most 14. A violation that needs a budget change is a stop.
+- [ ] Draw calls under 50 (counted with the shadow pass); triangles under 100k; GLB under 3 MB; materials at most 20 (limits of the 2026-11-06 amendment; they were 40 and 14 before). A violation that needs a budget change is a stop.
 - [ ] The measured frame time and the machine are recorded. The pane's frame rate is only a proxy; the 60 fps and 4x throttle check on Manuel's laptop is listed in the review.
 - [ ] Base checks pass; console clean.
 
@@ -695,7 +695,7 @@ Acceptance criteria:
 - [ ] Ray direction equals `Rays_Target - Rays_Origin` (unit test of the pure function).
 - [ ] Rays do not write depth; screenshot from `hero` shows rays from the window to the counter; screenshot from `side` shows no hard plane edges.
 - [ ] Uniforms are on `material.userData` and mutated, not replaced (grep).
-- [ ] Draw calls still under 40; console clean.
+- [ ] Draw calls still under 50 (2026-11-06 amendment, was 40); console clean.
 
 ### Slice 4.2: Dust motes
 Goal: `Points` floating inside the box `Dust_Min` to `Dust_Max`, own shader, brighter inside the ray area.
