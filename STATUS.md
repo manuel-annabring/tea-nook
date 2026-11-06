@@ -6,7 +6,7 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 
 - **Current phase:** Phase 2b (Details: back wall, tea box, cup and kettle polish) on branch `phase/2b-details`, started 2026-11-06 (D-078). Phases 1 and 2 and the phase 2 fixes (F1 to F5, G1, G2) are merged into `main`; the Git history was rewritten on 2026-11-05 (the old history is in the bundle `tea-nook-before-rewrite.bundle` next to the project folder, safe to delete once Manuel is satisfied).
 - **State:** Phase 2b slices D1 to D5 are done on `phase/2b-details` (D0 approved the amendment on 2026-11-06, D-084). The finished scene is inside every budget (table below). One SPEC criterion is not met: the shelf casts no shadow on the back wall with the current sun (D-111, a decision for Manuel). Phase 3 is not started.
-- **Next action:** a fresh-context reviewer runs and writes `REVIEW-phase-2b.md`; after Manuel's review the branch `phase/2b-details` is merged into `main`, then the phase 3 kickoff (slice 3.1 uses `TeaBag_0..3`).
+- **Next action:** Manuel's review of phase 2b (`REVIEW-phase-2b.md`: verdict PASS, 0 blockers, 6 should-fix, 7 nits, 6 open questions in section 8; evidence images are local in `review/phase-2b/`). Then small fix slices if wanted, the merge of `phase/2b-details` into `main`, and the phase 3 kickoff (slice 3.1 uses `TeaBag_0..3`).
 - **Blockers:** none.
 
 ## Slices
