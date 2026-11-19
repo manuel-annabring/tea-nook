@@ -35,6 +35,9 @@ function setTeaTarget(target: AppearanceTarget & { index: number }, index: numbe
  * One steam column. The look comes from the store (`steamLooks[slot]`); the base follows the anchor marker's world
  * position. The mesh is named `SteamMesh_<slot>`, never a contract name.
  */
+/** The steam is not clickable: its transparent planes sit in front of the mug and would otherwise be hit first, which broke the mug hover (phase 3 fix). */
+const noRaycast = () => null
+
 export function Steam({ slot, anchor }: SteamProps) {
   const look = useStore((s) => s.steamLooks[slot])
   const mesh = useRef<Mesh>(null)
@@ -78,5 +81,5 @@ export function Steam({ slot, anchor }: SteamProps) {
   })
 
   // frustumCulled is off: the shader displaces vertices beyond the geometry's bounding box.
-  return <mesh ref={mesh} name={`SteamMesh_${slot}`} geometry={geometry} material={material} frustumCulled={false} />
+  return <mesh ref={mesh} name={`SteamMesh_${slot}`} geometry={geometry} material={material} frustumCulled={false} raycast={noRaycast} />
 }

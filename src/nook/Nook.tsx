@@ -4,6 +4,7 @@ import { TextureLoader, type Group, type Object3D } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { AO, CAMERA } from '../config/look.ts'
 import { TeaBagHits } from '../input/TeaInput.tsx'
+import { useTeaHoverCursor } from '../input/useHoverCursor.ts'
 import { useMugHandlers } from '../input/useMugHandlers.ts'
 import { frameCamera } from '../scene/framing.ts'
 import { assertContract } from './contract.ts'
@@ -31,6 +32,7 @@ export function Nook() {
   const framed = useRef(false)
   const teaRig = useRef<TeaRig | null>(null)
   const mugHandlers = useMugHandlers()
+  useTeaHoverCursor()
   // Baked AO of `Room`. Suspends until loaded, so the first frame already has it. We created the texture, so we dispose it.
   const aoTexture = useLoader(TextureLoader, ROOM_AO_URL)
 

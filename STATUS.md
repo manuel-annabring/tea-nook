@@ -4,12 +4,11 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 
 ## Now
 
-- **Current phase:** Phase 2b (Details: back wall, tea box, cup and kettle polish) is done and merged into `main` on 2026-11-06 (fast-forward from `phase/2b-details`, D-078). Phases 1 and 2 and the phase 2 fixes (F1 to F5, G1, G2) are merged into `main`; the Git history was rewritten on 2026-11-05 (the old history is in the bundle `tea-nook-before-rewrite.bundle` next to the project folder, safe to delete once Manuel is satisfied).
-- **State:** Phase 2b slices D1 to D5 are done on `phase/2b-details` (D0 approved the amendment on 2026-11-06, D-084). The finished scene is inside every budget (table below). One SPEC criterion is not met: the shelf casts no shadow on the back wall with the current sun (D-111, a decision for Manuel). Phase 3 is not started.
+- **Current phase:** Phase 3 (Interaction, UI and release prep) is done on branch `phase/3-interaction` (review `REVIEW-phase-3.md`: PASS, 0 blockers, 6 should-fix); Manuel's answers to the review are applied in the fix commit after it (D-136 to D-139). Not merged into `main` yet. Phase 2b and earlier are merged into `main`.
+- **State:** all four phase 3 slices are done; budgets met (table "Budget table (slice 3.3)"). Not verified: 60 fps and the 4x CPU throttle on Manuel's laptop, a real slow-3G load, the GitHub deploy, Safari and Firefox.
 - **Phase 3 (started 2026-11-19, branch `phase/3-interaction`):** prep done (D-116: taupe wall, closer hero, AO fix). Slices 3.1 (click to cycle tea, D-117 to D-122), 3.2 (overlay, D-123 to D-127) and 3.3 (performance and budget check, D-128 to D-132; every budget met, table "Budget table (slice 3.3)" below) and 3.4 (deploy workflow and README, D-133 to D-135) done; phase 3 is complete, review next.
-- **Next action (older, phase 2b):** Manuel's review of phase 2b (`REVIEW-phase-2b.md`: verdict PASS, 0 blockers, 6 should-fix, 7 nits, 6 open questions in section 8; evidence images are local in `review/phase-2b/`). Then small fix slices if wanted and the phase 3 kickoff (slice 3.1 uses `TeaBag_0..3`).
+- **Next action:** Manuel's phase 3 review ("Try this" in `REVIEW-phase-3.md`), then merge `phase/3-interaction` into `main`, add a git remote and push (Claude never creates the remote). Open: question 6 of the review (the dev-only `applyPose` fix and a CLAUDE.md lesson), waiting for Manuel.
 - **Blockers:** none.
-- **Branch `fix/h1-wishes` (not merged, 2026-11-19):** Manuel's five wishes after the phase 2b review (shelf and rail 35 mm right, cups hang by the handle and lean, smooth shading for jars, cups and tin, new broad-leaf floor plant, hero cup scaled to 0.9), D-115. Contract check passes (6894 triangles), 40 draw calls, 16698 triangles in the app at hero; typecheck, lint, 43 tests and build pass. Evidence (local, git-ignored): `review/h1/`.
 
 ## Slices
 

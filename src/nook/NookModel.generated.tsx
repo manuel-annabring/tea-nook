@@ -28,6 +28,7 @@ type GLTFResult = GLTF & {
     Room_10: THREE.Mesh
     Room_11: THREE.Mesh
     Room_12: THREE.Mesh
+    Room_13: THREE.Mesh
     TeaBag_0: THREE.Mesh
     TeaBag_1: THREE.Mesh
     TeaBag_2: THREE.Mesh
@@ -90,6 +91,7 @@ export function Model(props: ThreeElements['group']) {
           <mesh name="Room_10" geometry={nodes.Room_10.geometry} material={materials.Mat_Bag1} />
           <mesh name="Room_11" geometry={nodes.Room_11.geometry} material={materials.Mat_Bag2} />
           <mesh name="Room_12" geometry={nodes.Room_12.geometry} material={materials.Mat_Bag3} />
+          <mesh name="Room_13" geometry={nodes.Room_13.geometry} material={materials.Mat_Kettle} />
         </group>
         <mesh name="TeaBag_0" geometry={nodes.TeaBag_0.geometry} material={materials.Mat_Bag0} position={[0.145, 0.015, 0.15]} />
         <mesh name="TeaBag_1" geometry={nodes.TeaBag_1.geometry} material={materials.Mat_Bag1} position={[0.175, 0.015, 0.15]} />

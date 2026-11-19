@@ -7,7 +7,6 @@ import { TEA_BAG_NAMES } from '../nook/contract.ts'
 import { TEA_BAG_HIT_PREFIX } from '../nook/teaSelection.ts'
 import { useStore } from '../store/useStore.ts'
 import { CLICK_MAX_DRAG_PX } from './clickThreshold.ts'
-import { useHoverCursor } from './useHoverCursor.ts'
 
 const MODEL_URL = assetUrl('models/nook.glb')
 
@@ -18,7 +17,6 @@ const MODEL_URL = assetUrl('models/nook.glb')
  */
 export function TeaBagHits() {
   const { nodes } = useGLTF(MODEL_URL) as unknown as { nodes: Record<string, Mesh> }
-  const cursor = useHoverCursor()
   const boxes = useMemo(() => {
     const box = new Box3()
     const size = new Vector3()
@@ -53,11 +51,6 @@ export function TeaBagHits() {
             if (e.delta > CLICK_MAX_DRAG_PX) return
             useStore.getState().setTea(i)
           }}
-          onPointerOver={(e) => {
-            e.stopPropagation()
-            cursor.over(e.object)
-          }}
-          onPointerOut={(e) => cursor.out(e.object)}
         >
           <boxGeometry args={b.size} />
           <meshBasicMaterial />

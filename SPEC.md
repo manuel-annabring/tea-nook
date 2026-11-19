@@ -63,7 +63,7 @@ Chosen by Manuel on 2026-11-04 from three sketched variants (counter in the corn
 - **Walls:** back wall (+Y) and left wall (-X) rise from the floor. The walls are 0.50 above the worktop (amendment of section 5, 2026-11-04) and continue down to the floor behind the cabinet. The window sits in the left wall above the worktop (sill about 0.12 above it, opening about 0.36 x 0.30), frame `Mat_Frame`, glass and sky card as in the contract.
 - **Props:** mug and kettle on the worktop as today (tea steam and kettle steam markers unchanged in meaning). Tin and books on the worktop. The plant in its pot stands on the floor to the right of the cabinet.
 - **Contract impact (to confirm in slice 2.0):** no new object or material names; footprint, origin and wall height above the origin unchanged. Moves, no renames: `Orbit_Target` (visual centre now lower and more forward), `Rays_Origin`, `Rays_Target`, `Dust_Min/Max` re-placed for the new volume. Everything below z = 0 (cabinet, floor, plinth) and the floor extension are inside `Room`. Triangle and material budgets stay well within limits (14 materials max, none added).
-- **Camera:** limits as tuned in slice 2.5 (azimuth 0 to 40 degrees, polar 55 to 80 degrees, distance 1.8 to 3.2); the hero framing was re-fitted to the taller scene.
+- **Camera:** limits as tuned in slice 2.5 (azimuth 0 to 40 degrees, polar 55 to 80 degrees, distance 1.9 to 3.2 since the phase 3 review, hero distance 2.3 (D-116); the hero framing was re-fitted to the taller scene.
 
 ### Images
 

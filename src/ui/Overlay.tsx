@@ -41,12 +41,25 @@ function TeaName() {
   )
 }
 
+/** The hint fades out after the first click (the first change of `teaIndex`) and stays gone (D-137, Manuel's choice in the phase 3 review). */
+function Hint() {
+  const teaIndex = useStore((s) => s.teaIndex)
+  const [first] = useState(teaIndex)
+  const [used, setUsed] = useState(false)
+  if (!used && teaIndex !== first) setUsed(true)
+  return (
+    <p className="pill hint" data-gone={used}>
+      Drag to orbit · Click the mug to change tea
+    </p>
+  )
+}
+
 export function Overlay() {
   return (
     <div className="overlay">
       <h1 className="title">Tea Nook</h1>
       <TeaName />
-      <p className="pill hint">Drag to orbit · Click the mug to change tea</p>
+      <Hint />
       <Loader />
     </div>
   )
