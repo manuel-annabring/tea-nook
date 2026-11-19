@@ -5,6 +5,7 @@ import { ACESFilmicToneMapping, MathUtils, NeutralToneMapping, NoToneMapping, PC
 import { BACKGROUND_COLOR, CAMERA, TONE } from '../config/look.ts'
 import { PointerProbe } from '../input/PointerProbe.tsx'
 import { Nook } from '../nook/Nook.tsx'
+import { ReadySignal } from '../ui/ReadySignal.tsx'
 import { poseToPosition } from './framing.ts'
 import { Lights } from './Lights.tsx'
 import { getShadowMode } from './shadowMode.ts'
@@ -39,6 +40,7 @@ export default function Scene() {
         <Lights />
         <Suspense fallback={null}>
           <Nook />
+          <ReadySignal />
         </Suspense>
         <PointerProbe markers={STEAM_MARKERS} />
         {DevSteam ? (

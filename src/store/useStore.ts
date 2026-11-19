@@ -30,6 +30,9 @@ interface StoreState {
   setPointer: (slot: SteamSlot, x: number, y: number, z: number) => void
   setPointerActive: (active: boolean) => void
   setSteamLook: (slot: SteamSlot, look: SteamLook) => void
+  /** True once the model is mounted and two frames have rendered (production-safe; the loader overlay reads it). */
+  sceneReady: boolean
+  setSceneReady: () => void
 }
 
 // Nothing subscribes to the pointer fields, so writing them on every move re-renders nothing.
@@ -52,4 +55,6 @@ export const useStore = create<StoreState>()((set, get) => ({
     if (get().pointerActive !== pointerActive) set({ pointerActive })
   },
   setSteamLook: (slot, look) => set((s) => ({ steamLooks: { ...s.steamLooks, [slot]: look } })),
+  sceneReady: false,
+  setSceneReady: () => set({ sceneReady: true }),
 }))

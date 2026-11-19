@@ -151,6 +151,17 @@ export const TONE = {
 /** Canvas and page background, behind the diorama. */
 export const BACKGROUND_COLOR = '#E9DFCB'
 
+/**
+ * HTML overlay look (system font stack, no web fonts). The values live in `src/index.css` as CSS variables; this
+ * object is the reference that `src/ui/ui.test.ts` compares them with. Text colour is a dark warm brown; the hint and tea name sit on
+ * a translucent cream pill because the floor edge behind them is dark. `src/ui/ui.test.ts` checks the contrast.
+ */
+export const UI = {
+  fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+  text: '#3A2D22',
+  pill: 'rgba(233, 223, 203, 0.86)',
+}
+
 export const CAMERA = {
   fov: 35,
   near: 0.01,
