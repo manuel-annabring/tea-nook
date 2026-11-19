@@ -16,7 +16,7 @@ function teaColor(index: number): string {
 
 /** Material color by contract material name. SPEC section 3 for the six main ones; the rest are placeholders until the references arrive. */
 export const PALETTE = {
-  Mat_Wall: '#F2E6D0',
+  Mat_Wall: '#937E6C', // review of phase 2b: darker taupe wall so the cream steam reads (D-116); Blender keeps #F2E6D0
   Mat_Wood: '#C98F5B',
   Mat_Mug: '#D9694A',
   Mat_Kettle: '#8FB8A0',
@@ -161,7 +161,7 @@ export const CAMERA = {
    * purpose: they are dev-only views, and the dev hook lifts the orbit limits when a preset needs it.
    */
   presets: {
-    hero: { azimuth: 25, polar: 68, distance: 2.6 },
+    hero: { azimuth: 25, polar: 68, distance: 2.3 },
     front: { azimuth: 0, polar: 75, distance: 2.6 },
     side: { azimuth: 90, polar: 75, distance: 2.6 },
     top: { azimuth: 0, polar: 5, distance: 2.6 },
@@ -177,7 +177,7 @@ export const CAMERA = {
     azimuthMax: 40,
     polarMin: 55,
     polarMax: 80,
-    distanceMin: 1.8,
+    distanceMin: 1.9,
     distanceMax: 3.2,
   },
 } as const satisfies { presets: Record<string, CameraPose> } & Record<string, unknown>

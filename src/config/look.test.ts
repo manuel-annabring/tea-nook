@@ -25,7 +25,7 @@ function blockoutPalette(): Record<string, string> {
 
 // Colours the app deliberately sets differently from the Blender default (the runtime palette wins, D-009). The
 // Blender material keeps the old value because nook.blend is not touched by look decisions.
-const APP_OVERRIDES: Record<string, string> = {}
+const APP_OVERRIDES: Record<string, string> = { Mat_Wall: '#F2E6D0' } // D-116: the wall is taupe in the app
 
 describe('PALETTE', () => {
   it('has exactly the contract material names', () => {

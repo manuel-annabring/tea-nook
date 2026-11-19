@@ -1,4 +1,4 @@
-import { MeshStandardMaterial, NoColorSpace, type Material, type Object3D, type Texture } from 'three'
+import { Mesh, MeshStandardMaterial, NoColorSpace, type Material, type Object3D, type Texture } from 'three'
 import { AO_TEXTURE } from './contract.ts'
 import { assetUrl } from '../lib/assetUrl.ts'
 
@@ -8,13 +8,29 @@ export const ROOM_AO_URL = assetUrl(`models/${AO_TEXTURE.file}`)
 /** The UV set a texture reads from: glTF TEXCOORD_1 is three's `uv1`, which is texture channel 1. `UV_AO` is that set. */
 const AO_UV_CHANNEL = 1
 
-/** Every standard material that belongs to the `Room` node (one per child mesh of the exported group). */
+/** Materials that any mesh without a second UV set (`uv1`) uses: an aoMap on them would read texel (0, 0) for every pixel. */
+function materialsWithoutAoUv(room: Object3D): Set<Material> {
+  let root: Object3D = room
+  while (root.parent) root = root.parent
+  const skip = new Set<Material>()
+  root.traverse((node) => {
+    if (!(node instanceof Mesh) || node.geometry.getAttribute('uv1')) return
+    for (const m of Array.isArray(node.material) ? node.material : [node.material]) skip.add(m)
+  })
+  return skip
+}
+
+/**
+ * Every standard material that belongs to the `Room` node (one per child mesh of the exported group), except the ones that a mesh
+ * without `uv1` also uses (phase 3: the `Mat_Bag0..3` jar materials are shared with the `TeaBag` meshes, which have no AO UVs).
+ */
 function roomMaterials(room: Object3D): MeshStandardMaterial[] {
+  const skip = materialsWithoutAoUv(room)
   const found = new Set<MeshStandardMaterial>()
   room.traverse((node) => {
     const material = (node as { material?: Material | Material[] }).material
     for (const m of Array.isArray(material) ? material : material ? [material] : []) {
-      if (m instanceof MeshStandardMaterial) found.add(m)
+      if (m instanceof MeshStandardMaterial && !skip.has(m)) found.add(m)
     }
   })
   return [...found]

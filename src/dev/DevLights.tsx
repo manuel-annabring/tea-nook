@@ -11,6 +11,7 @@ const sunStart = sunAnglesFromPosition(morning.sunPosition)
 
 /** Wall colour suggestions (Manuel's review of phase 2); the first entry that equals the default is selected at start. */
 const WALL_PRESETS = {
+  'Taupe (default)': '#937E6C',
   'Dusty blue': '#C8D7DC',
   Sage: '#C9D6BE',
   Rose: '#EBCFC0',

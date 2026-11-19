@@ -597,7 +597,7 @@ Taste-critical: yes (framing). Criterion is "implemented with the recommended va
 Acceptance criteria:
 - [ ] Budget table in `STATUS.md`: triangles, GLB size, materials, draw calls with shadow, average frame time over `__nook.benchmark(2000)` (two runs, compared with the 1.6 ms of F5), each against its section 5 budget.
 - [ ] Hero view: the whole diorama is inside 1280 x 720 (projected bounding-box corners) and `Orbit_Target` projects within 10% of the viewport centre; the orbit clamp test passes at the four corners and both distances with no important object clipped (screenshots).
-- [ ] Shadow: no clipping and no acne at hero, front and the four corners (`fitShadowFrustum` still fits, texel sizes reported); the new shelf shadow on the back wall reads as a soft shadow.
+- [ ] Shadow: no clipping and no acne at hero, front and the four corners (`fitShadowFrustum` still fits, texel sizes reported); the shelf, jars, rail and frames show baked contact darkening (AO) on the back wall (reworded 2026-11-19: a sun-cast shelf shadow is not possible with the sun parallel to that wall, D-111).
 - [ ] Steam readability: a screenshot pair (kettle and tea steam against the new back wall) shows both steams clearly; if a part hides a steam, it is moved within the layout and logged.
 - [ ] `grep -r "__nook" dist` and `grep -r leva dist` print nothing; base checks pass; console clean.
 - [ ] A fresh-context reviewer runs and `REVIEW-phase-2b.md` is written; Manuel is notified; phase 3 is not started.
