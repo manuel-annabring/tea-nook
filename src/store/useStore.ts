@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { KETTLE_STEAM_LOOK, STEAM_LOOK_DEFAULTS, type SteamLook } from '../config/look.ts'
+import { KETTLE_STEAM_LOOK, STEAM_LOOK_DEFAULTS, TEAS, type SteamLook } from '../config/look.ts'
 
 /** The two steam columns. Both use the same material class with different looks. */
 export type SteamSlot = 'tea' | 'kettle'
@@ -19,8 +19,14 @@ interface StoreState {
   pointers: Record<SteamSlot, PointerPoint>
   /** False while the pointer is outside the canvas or not hitting the steam planes. */
   pointerActive: boolean
-  /** Current look per steam (dev panel overrides it; slice 3.1 will drive the tea steam from the selected tea). */
+  /** Current look per steam (dev panel overrides it; the tea steam colour, density and speed follow the selected tea instead). */
   steamLooks: Record<SteamSlot, SteamLook>
+  /** Index into `TEAS` of the selected tea. Read in useFrame via getState(); the damped visuals follow it. */
+  teaIndex: number
+  /** Next tea, wrapping from the last to the first. */
+  nextTea: () => void
+  /** Selects tea `index` (ignored when out of range). */
+  setTea: (index: number) => void
   setPointer: (slot: SteamSlot, x: number, y: number, z: number) => void
   setPointerActive: (active: boolean) => void
   setSteamLook: (slot: SteamSlot, look: SteamLook) => void
@@ -31,6 +37,11 @@ export const useStore = create<StoreState>()((set, get) => ({
   pointers: { tea: { x: 0, y: 0, z: 0 }, kettle: { x: 0, y: 0, z: 0 } },
   pointerActive: false,
   steamLooks: { tea: STEAM_LOOK_DEFAULTS, kettle: KETTLE_STEAM_LOOK },
+  teaIndex: 0,
+  nextTea: () => set((s) => ({ teaIndex: (s.teaIndex + 1) % TEAS.length })),
+  setTea: (index) => {
+    if (Number.isInteger(index) && index >= 0 && index < TEAS.length && index !== get().teaIndex) set({ teaIndex: index })
+  },
   setPointer: (slot, x, y, z) => {
     const p = get().pointers[slot]
     p.x = x

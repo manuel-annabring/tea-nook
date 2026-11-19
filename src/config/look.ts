@@ -183,3 +183,21 @@ export const CAMERA = {
 } as const satisfies { presets: Record<string, CameraPose> } & Record<string, unknown>
 
 export type CameraPresetName = keyof typeof CAMERA.presets
+
+/**
+ * Tea selection (slice 3.1). `bagLift` is how far the active tea bag stands above the others (meters, relative to its
+ * rest position in the model). The damping values are `MathUtils.damp` lambdas (higher = faster): about 4 reaches 99 %
+ * after 1.2 s, so colour, density and speed settle inside the 2 s of the SPEC criterion without a visible jump.
+ * `maxDelta` caps the time step so a long frame (tab switch) cannot make a damped value jump in one step.
+ * `hitPadding` grows the invisible click box of each bag beyond its mesh (meters per side, x and y only). The box is
+ * deliberately thinner than the bag in depth (`hitDepth`, total meters): seen from the side (azimuth 40) the bags overlap
+ * on screen, and a deep box of the neighbour in front would catch a click aimed at the bag behind it.
+ */
+export const TEA_SELECT = {
+  bagLift: 0.015,
+  bagDamping: 8,
+  teaDamping: 4,
+  maxDelta: 0.1,
+  hitPadding: { x: 0.002, y: 0.008 },
+  hitDepth: 0.014,
+} as const

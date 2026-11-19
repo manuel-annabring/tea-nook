@@ -1,8 +1,10 @@
-import { useLoader, useThree } from '@react-three/fiber'
+import { useFrame, useLoader, useThree } from '@react-three/fiber'
 import { useLayoutEffect, useRef } from 'react'
 import { TextureLoader, type Group, type Object3D } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { AO, CAMERA } from '../config/look.ts'
+import { TeaBagHits } from '../input/TeaInput.tsx'
+import { useMugHandlers } from '../input/useMugHandlers.ts'
 import { frameCamera } from '../scene/framing.ts'
 import { assertContract } from './contract.ts'
 import { Model } from './NookModel.generated.tsx'
@@ -10,19 +12,25 @@ import { applyPalette } from './palette.ts'
 import { applyShadowFlags } from './shadows.ts'
 import { applyRoomAo, configureAoTexture, detachRoomAo, ROOM_AO_URL } from './roomAo.ts'
 import { Steam } from './Steam.tsx'
+import { useStore } from '../store/useStore.ts'
+import { createTeaRig, resetTeaRig, tickTeaSelection, type TeaRig } from './teaSelection.ts'
 
 /**
  * The diorama: the generated model plus behaviour. On mount it checks the model contract (dev only, throws with the
  * missing names), applies the palette and the baked AO texture, frames the camera on the `Orbit_Target` marker once the controls exist, and
- * attaches the two steams to the `Steam_Tea` and `Steam_Kettle` markers.
+ * attaches the two steams to the `Steam_Tea` and `Steam_Kettle` markers, and handles the tea selection (click on the mug
+ * or a bag; the lifted bag and the tea surface colour follow the store's `teaIndex`).
  */
 export function Nook() {
   const root = useRef<Group>(null)
   const teaMarker = useRef<Object3D>(null)
   const kettleMarker = useRef<Object3D>(null)
   const camera = useThree((s) => s.camera)
+  const scene = useThree((s) => s.scene)
   const controls = useThree((s) => s.controls) as OrbitControls | null
   const framed = useRef(false)
+  const teaRig = useRef<TeaRig | null>(null)
+  const mugHandlers = useMugHandlers()
   // Baked AO of `Room`. Suspends until loaded, so the first frame already has it. We created the texture, so we dispose it.
   const aoTexture = useLoader(TextureLoader, ROOM_AO_URL)
 
@@ -40,6 +48,21 @@ export function Nook() {
       ref.current = marker
     }
   }, [])
+
+  // Bags, their hit boxes and the tea surface material, for the per-frame tea selection (`tickTeaSelection`).
+  useLayoutEffect(() => {
+    if (!root.current) return
+    const rig = createTeaRig(root.current, scene)
+    teaRig.current = rig
+    return () => {
+      resetTeaRig(rig)
+      teaRig.current = null
+    }
+  }, [scene])
+
+  useFrame((_, delta) => {
+    if (teaRig.current) tickTeaSelection(teaRig.current, useStore.getState().teaIndex, delta)
+  })
 
   useLayoutEffect(() => {
     const room = root.current?.getObjectByName('Room')
@@ -64,7 +87,8 @@ export function Nook() {
 
   return (
     <>
-      <Model ref={root} />
+      <Model ref={root} {...mugHandlers} />
+      <TeaBagHits />
       <Steam slot="tea" anchor={teaMarker} />
       <Steam slot="kettle" anchor={kettleMarker} />
     </>

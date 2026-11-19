@@ -13,6 +13,7 @@ import {
   Vector3,
   type IUniform,
 } from 'three'
+import { TEA_SELECT } from '../config/look.ts'
 import { generatePerlinTexture } from '../lib/perlin.ts'
 import { steamFragmentShader, steamVertexShader } from '../shaders/steam.ts'
 import type { SteamLook, SteamNoise } from './steamDefaults.ts'
@@ -114,11 +115,14 @@ export function createSteamMaterial(noise: DataTexture): SteamMaterial {
 }
 
 /** Copies a look into the existing uniform objects (mutate, never replace). */
-export function applyLook(material: SteamMaterial, look: SteamLook): void {
+export function applyLook(material: SteamMaterial, look: SteamLook, withAppearance = true): void {
   const u = material.uniforms
   const { shape } = look
-  u.uColor.value.set(look.color)
-  u.uDensity.value = look.density
+  // Colour and density are skipped for the tea steam: `dampAppearance` owns them (they follow the selected tea).
+  if (withAppearance) {
+    u.uColor.value.set(look.color)
+    u.uDensity.value = look.density
+  }
   u.uHeight.value = look.height
   u.uNoiseScale.value.set(look.noiseScaleX, look.noiseScaleY)
   u.uCut.value.set(look.cutLow, look.cutHigh)
@@ -156,4 +160,40 @@ export function tickSteam(material: SteamMaterial, delta: number, speed: number,
   p.y = MathUtils.damp(p.y, pointer.y, POINTER_DAMPING, delta)
   p.z = MathUtils.damp(p.z, pointer.z, POINTER_DAMPING, delta)
   u.uPointerBlend.value = MathUtils.damp(u.uPointerBlend.value, pointer.active ? 1 : 0, BLEND_DAMPING, delta)
+}
+
+/** What the tea steam is heading for (color is stored in the working colour space, like the uniform). */
+export interface AppearanceTarget {
+  color: Color
+  density: number
+  speed: number
+}
+
+/** Damped state that is not a uniform: the rise speed. `ready` is false until the first call snaps to the target. */
+export interface AppearanceState {
+  speed: number
+  ready: boolean
+}
+
+/**
+ * Damps the steam colour, density and speed toward the target (first call snaps, so the scene starts on the selected
+ * tea). Mutates the existing uniform objects. Channels are damped separately, so each moves monotonically.
+ */
+export function dampAppearance(material: SteamMaterial, state: AppearanceState, target: AppearanceTarget, delta: number): void {
+  const u = material.uniforms
+  if (!state.ready) {
+    u.uColor.value.copy(target.color)
+    u.uDensity.value = target.density
+    state.speed = target.speed
+    state.ready = true
+    return
+  }
+  const dt = Math.min(delta, TEA_SELECT.maxDelta)
+  const k = TEA_SELECT.teaDamping
+  const c = u.uColor.value
+  c.r = MathUtils.damp(c.r, target.color.r, k, dt)
+  c.g = MathUtils.damp(c.g, target.color.g, k, dt)
+  c.b = MathUtils.damp(c.b, target.color.b, k, dt)
+  u.uDensity.value = MathUtils.damp(u.uDensity.value, target.density, k, dt)
+  state.speed = MathUtils.damp(state.speed, target.speed, k, dt)
 }

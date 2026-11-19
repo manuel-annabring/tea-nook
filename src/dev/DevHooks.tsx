@@ -1,10 +1,11 @@
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame, useThree, type RootState } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { Box3, DirectionalLight, HemisphereLight, MathUtils, Raycaster, Spherical, Vector2, Vector3, type Camera, type Material, type Object3D, type Scene, type ShaderMaterial, type WebGLRenderer } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CAMERA, type CameraPose, type CameraPresetName } from '../config/look.ts'
 import type { SteamUniforms } from '../nook/steamMaterial.ts'
 import { getRoomAoIntensity, setRoomAoIntensity } from '../nook/roomAo.ts'
+import { useStore } from '../store/useStore.ts'
 import { frameCamera } from '../scene/framing.ts'
 import { sunAnglesFromPosition } from '../lib/sunAngles.ts'
 import { applyLightLook, LIGHT_NAMES, type LightLook } from '../scene/lightRig.ts'
@@ -73,6 +74,13 @@ interface NookHooks {
   getAOIntensity: () => number | null
   /** Current values of a steam's uniforms (the meshes are named `SteamMesh_tea` and `SteamMesh_kettle`). */
   uniforms: (slot: 'tea' | 'kettle') => SteamUniformValues | null
+  /**
+   * Runs every `useFrame` callback `frames` times with a fixed time step (default 1/60 s) without rendering, so damped
+   * values (tea selection, steam, bag lift) can be sampled frame by frame even while the pane runs rAF at 1 Hz.
+   */
+  step: (frames?: number, dt?: number) => void
+  /** The Zustand store, so `useStore.getState().teaIndex` can be read from the console. */
+  useStore: typeof useStore
 }
 
 interface SteamUniformValues {
@@ -100,6 +108,8 @@ interface Rig {
   camera: Camera
   gl: WebGLRenderer
   controls: OrbitControls | null
+  /** r3f's `get`, to reach the `useFrame` subscribers for `step`. */
+  get: () => RootState
 }
 
 // Scratch objects for the hooks (they run on demand from the console, not per frame).
@@ -141,6 +151,13 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
   const center = (obj: Object3D, out: Vector3) =>
     box.setFromObject(obj).isEmpty() ? obj.getWorldPosition(out) : box.getCenter(out)
   return {
+    useStore,
+    step(frames = 1, dt = 1 / 60) {
+      const state = rigRef.current.get()
+      for (let i = 0; i < frames; i += 1) {
+        for (const sub of state.internal.subscribers) sub.ref.current(state, dt)
+      }
+    },
     getCamera() {
       const { camera, controls } = rigRef.current
       const target = controls ? controls.target : vec.set(0, 0, 0)
@@ -218,6 +235,8 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
       // Transparent meshes (steam) are skipped: their vertices are displaced in the shader, so CPU raycasts on them are wrong.
       const hits = raycaster.intersectObjects(scene.children, true)
       for (const hit of hits) {
+        // Invisible click boxes (tea bag hit proxies) are not geometry the user sees.
+        if (hit.object.userData.hitProxy) continue
         const material = (hit.object as { material?: { transparent?: boolean } }).material
         if (material?.transparent) continue
         let node: Object3D | null = hit.object
@@ -365,13 +384,14 @@ export default function DevHooks() {
   const camera = useThree((s) => s.camera)
   const gl = useThree((s) => s.gl)
   const controls = useThree((s) => s.controls) as OrbitControls | null
-  const rigRef = useRef<Rig>({ scene, camera, gl, controls })
+  const get = useThree((s) => s.get)
+  const rigRef = useRef<Rig>({ scene, camera, gl, controls, get })
   const presetDone = useRef(false)
   const frames = useRef(0)
 
   useEffect(() => {
-    rigRef.current = { scene, camera, gl, controls }
-  }, [scene, camera, gl, controls])
+    rigRef.current = { scene, camera, gl, controls, get }
+  }, [scene, camera, gl, controls, get])
 
   useEffect(() => {
     window.__nook = createHooks(rigRef)
