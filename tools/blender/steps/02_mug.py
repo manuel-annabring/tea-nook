@@ -15,7 +15,7 @@ import sys
 
 import bpy
 import bmesh
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 # ------------------------------------------------------------------ parameters (metres) -------
 SEGMENTS = 18  # round parts (06_smooth_shading.py shades them smooth afterwards)
@@ -47,6 +47,7 @@ INNER = [
     (0.0000, 0.0100),  # inner floor, 10 mm above the base
 ]
 MUG_H = 0.0900
+MUG_SCALE = 0.90  # slice H1: the whole cup (body, handle, tea, marker) is built at the D4 size above and scaled about its base centre by this factor
 TEA_DEPTH = 0.0080  # tea surface this far below the rim
 TEA_INSET = 0.0005  # tea disc radius is this much smaller than the inner wall at that height
 
@@ -143,11 +144,12 @@ def main():
     bm = bmesh.new()
     build_body(bm)
     build_handle(bm)
+    bmesh.ops.scale(bm, vec=(MUG_SCALE, MUG_SCALE, MUG_SCALE), verts=bm.verts[:], space=Matrix.Identity(4))  # origin = base centre, so it stays put
     write_mesh(bm, mug.data)
 
     # Tea: flat disc, local z = 0, so the origin is its centre. Only the object's z moves.
-    tea_z = MUG_H - TEA_DEPTH
-    r = lerp_radius(INNER, tea_z) - TEA_INSET
+    tea_z = (MUG_H - TEA_DEPTH) * MUG_SCALE
+    r = (lerp_radius(INNER, MUG_H - TEA_DEPTH) - TEA_INSET) * MUG_SCALE
     bm = bmesh.new()
     ring = lathe_ring(bm, r, 0.0, SEGMENTS)
     bm.faces.new(ring)
@@ -155,10 +157,10 @@ def main():
     tea.location = (0.0, 0.0, tea_z)
 
     # Marker: centre of the opening at rim height (position only).
-    marker.location = (0.0, 0.0, MUG_H)
+    marker.location = (0.0, 0.0, MUG_H * MUG_SCALE)
 
     tri = lambda m: sum(len(p.vertices) - 2 for p in m.polygons)
-    print(f"[02_mug] mug triangles={tri(mug.data)} tea triangles={tri(tea.data)} tea_z={tea_z:.4f} tea_r={r:.4f} rim_z={MUG_H}")
+    print(f"[02_mug] mug triangles={tri(mug.data)} tea triangles={tri(tea.data)} tea_z={tea_z:.4f} tea_r={r:.4f} rim_z={MUG_H * MUG_SCALE}")
 
     if out:
         bpy.ops.wm.save_as_mainfile(filepath=out)

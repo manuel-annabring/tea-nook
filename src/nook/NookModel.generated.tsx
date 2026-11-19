@@ -74,8 +74,8 @@ export function Model(props: ThreeElements['group']) {
           <group name="Steam_Kettle" position={[-0.094, 0.116, 0]} />
         </group>
         <mesh name="Mug" geometry={nodes.Mug.geometry} material={materials.Mat_Mug} position={[0, 0, 0.07]}>
-          <group name="Steam_Tea" position={[0, 0.09, 0]} />
-          <mesh name="TeaSurface" geometry={nodes.TeaSurface.geometry} material={materials.Mat_Tea} position={[0, 0.082, 0]} />
+          <group name="Steam_Tea" position={[0, 0.081, 0]} />
+          <mesh name="TeaSurface" geometry={nodes.TeaSurface.geometry} material={materials.Mat_Tea} position={[0, 0.074, 0]} />
         </mesh>
         <group name="Room">
           <mesh name="Room_1" geometry={nodes.Room_1.geometry} material={materials.Mat_Wall} />

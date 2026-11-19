@@ -107,7 +107,7 @@ POT_SHARP_DEG = 50.0
 RNG_SEED = 20261105  # leaf irregularity of the hanging planter (deterministic)
 
 # Floor plant (slice F4): octagonal tapered pot, three thin curved stems, two leaf clusters.
-PLANT_XY = (0.46, 0.10)
+PLANT_XY = (0.450, 0.09)
 PLANT_REACH_X = (0.315, 0.585)  # leaves must stay right of the worktop (x 0.30) and on the floor (x 0.60)
 PLANT_MAX_Y = 0.215  # and in front of the back wall (y 0.225)
 POT_SIDES = 8
@@ -125,24 +125,30 @@ POT_PROFILE = [  # (radius, z): underside centre, tapered wall (narrow at the bo
 # Stems: (lateral offset of the top from the pot axis (x, y), height of the top above the pot bottom, bulge of the
 # curve sideways as a fraction of the height, direction of the bulge in degrees, base radius, top radius).
 STEMS = [
-    ((0.004, -0.008), 0.275, 0.035, 200.0, 0.0022, 0.0015),  # tallest: upper cluster
-    ((-0.022, 0.012), 0.195, 0.04, 35.0, 0.0020, 0.0014),  # second: lower cluster
-    ((0.004, 0.026), 0.150, 0.04, 280.0, 0.0018, 0.0013),  # shortest: one small leaf
+    ((0.000, -0.006), 0.300, 0.030, 200.0, 0.0022, 0.0015),  # tallest: upper cluster
+    ((-0.034, 0.014), 0.212, 0.045, 35.0, 0.0020, 0.0014),  # second: lower left cluster
+    ((0.038, 0.012), 0.170, 0.045, 280.0, 0.0018, 0.0013),  # shortest: lower right cluster
 ]
 STEM_SIDES, STEM_SEGMENTS = 4, 4
-# Leaves: (stem index, yaw degrees, pitch above horizontal, roll degrees, length). Lobed leaf, see `lobed_leaf`.
-PLANT_LEAVES = [  # (stem, yaw, pitch, roll, length, petiole length); leaves that point towards the camera (yaw about 295) droop, leaves that point away rise, so both show their faces
-    (0, 305, 14, 6, 0.112, 0.030),
-    (0, 335, 22, -8, 0.100, 0.028),
-    (0, 48, 40, 10, 0.108, 0.030),
-    (0, 118, 54, -6, 0.110, 0.028),
-    (0, 195, 40, 8, 0.108, 0.030),
-    (1, 318, 8, 8, 0.088, 0.024),
-    (1, 28, 24, -8, 0.084, 0.024),
-    (1, 135, 46, 10, 0.086, 0.024),
-    (2, 250, 12, 6, 0.072, 0.020),
+# Leaves (slice H1, reference: a low-poly paper plant with big fan leaves): (stem index, yaw degrees = heading of the leaf's centre lobe in the
+# horizontal plane, tilt degrees = how far the leaf plane leans towards the camera (0 flat, 90 upright), length, petiole length).
+# Before H1 the leaves were built with a width factor that a second `LEAF_WIDTH` constant (the picture-frame leaf, 0.038) overwrote, so they came out
+# very narrow; the fan leaf below has its own FAN_* constants.
+PLANT_LEAVES = [
+    (0, 198, 22, 0.100, 0.032),  # upper cluster: left, right and one rising towards the back
+    (0, 328, 20, 0.098, 0.032),
+    (0, 84, 28, 0.095, 0.030),
+    (1, 212, 26, 0.084, 0.028),  # lower left
+    (1, 292, 32, 0.080, 0.026),
+    (2, 318, 24, 0.084, 0.028),  # lower right
+    (2, 255, 34, 0.078, 0.026),
 ]
-LEAF_WIDTH, LEAF_FOLD, LEAF_DROOP, LEAF_LOBE_DROP = 1.15, 0.08, 0.30, 0.08
+FAN_TIP_ANGLES = (-66.0, -33.0, 0.0, 33.0, 66.0)  # five broad lobes fan out from the base
+FAN_TIP_RADII = (0.80, 0.93, 1.0, 0.93, 0.80)  # tip distance from the base, as a fraction of the leaf length
+FAN_NOTCH_ANGLES = (-86.0, -49.5, -16.5, 16.5, 49.5, 86.0)  # the valleys between the lobes (outer two: the shoulders behind the base line)
+FAN_NOTCH_RADII = (0.34, 0.62, 0.64, 0.64, 0.62, 0.34)  # shallow valleys: the lobes are broad triangles, not thin spikes
+FAN_RIB, FAN_RIB_R = 0.07, 0.55  # raised rib in the middle of each lobe (height fraction of the length, distance fraction of the tip radius)
+FAN_DROOP, FAN_SIDE_DROP = 0.30, 0.10  # tip droop (quadratic along the length) and extra drop of the outer lobes
 PETIOLE_R = 0.0012  # leaf stalk radius (3 sided)  # width factor, vein rise, tip droop, lobe drop (fractions of length)
 
 # Hanging planter on the left wall (slice F4), in front of the window (towards the camera, y < 0).
@@ -226,12 +232,13 @@ SEGMENTS = 16  # round parts, flat shaded on purpose (low poly)
 WALL_FACE = 0.225  # inner face of the back wall (y); new parts stick EMBED into it so no coplanar faces fight
 EMBED = 0.001
 # Shelf: plank x -0.295 to 0.005, top z 0.290, 0.020 thick, 0.070 deep; two L brackets (0.015 wide, 0.045 tall) under it.
-SHELF_X = (-0.295, 0.005)
+SHIFT_X = 0.035  # slice H1: shelf, jars and rail moved this far to the right, away from the window wall
+SHELF_X = (-0.295 + SHIFT_X, 0.005 + SHIFT_X)
 SHELF_TOP, SHELF_T, SHELF_DEPTH = 0.290, 0.020, 0.070
-BRACKET_X = (-0.270, -0.035)  # bracket centres
+BRACKET_X = (-0.270 + SHIFT_X, -0.035 + SHIFT_X)  # bracket centres
 BRACKET_W, BRACKET_H, BRACKET_REACH, BRACKET_T = 0.015, 0.045, 0.050, 0.006  # width, height, how far the lower leg reaches out, leg thickness
 # Jars: centres, diameter 0.060, glass body 0.090, lid 0.010, contents 0.060 (jar i holds tea i).
-JAR_X = (-0.2575, -0.1825, -0.1075, -0.0325)
+JAR_X = tuple(x + SHIFT_X for x in (-0.2575, -0.1825, -0.1075, -0.0325))
 JAR_Y = 0.190
 JAR_BODY_H, JAR_LID_H, JAR_CONTENT_H = 0.090, 0.010, 0.060
 JAR_R, JAR_NECK_R, JAR_SHOULDER = 0.030, 0.027, 0.008  # body radius, radius at the top, height of the tapered shoulder
@@ -240,9 +247,14 @@ JAR_LID_R, JAR_CONTENT_R, JAR_CONTENT_BASE = 0.0295, 0.0265, 0.003  # lid radius
 # Decided by the D1 spike (DECISIONS.md): transparent glass sorts wrongly against the steam.
 JAR_GLASS = "tinted"
 # Rail: bar x -0.255 to -0.015 at z 0.215 (square section), end posts to the wall, hooks and hanging mugs.
-RAIL_X, RAIL_Z, RAIL_Y, RAIL_SECTION = (-0.255, -0.015), 0.215, 0.198, 0.008  # bar centre line y and section
-HOOK_X = (-0.225, -0.170, -0.115, -0.060)
-HOOK_LEN, HOOK_INTO_CUP, HOOK_R = 0.016, 0.003, 0.0018  # below the bar, extra tip inside the cup, radius (4 sided)
+RAIL_Z, RAIL_Y, RAIL_SECTION = 0.215, 0.198, 0.008  # bar centre line y and section
+MUG_PITCH = 0.064  # slice H1: the hanging cups swing about their hooks, so they need more room than the old 55 mm
+HOOK_X = tuple(-0.1425 + SHIFT_X + (i - 1.5) * MUG_PITCH for i in range(4))  # centre of each cup's bounding box before it swings
+HOOK_R = 0.0018  # hook rod radius (4 sided)
+HANG_TILT_DEG = 16.0  # slice H1: a cup hangs by its handle, so it swings about the hook and leans (mouth towards -X)
+HANG_PLANE_DY = -0.007  # the cup's plane sits this far in front of the hook's vertical rod, so the horizontal pin passes through the handle loop
+HANG_PIN_LEN = 0.0135  # pin length from the rod towards -Y, a little longer than the handle is thick
+HANG_PIN_IN_HANDLE = (0.0245, 0.0532)  # where the pin rests inside the handle loop, in the cup's own frame (x outwards, z above the base)
 MUG_TOP_Z, MUG_H, MUG_W = 0.195, 0.070, 0.054  # top of the hanging mugs, height, total width including the handle
 MUG_SIDES = 12
 MUG_PROFILE = [  # (radius, z above the mug base): underside, outer wall (taper), rim, inner wall, inner floor
@@ -253,7 +265,8 @@ MUG_PROFILE = [  # (radius, z above the mug base): underside, outer wall (taper)
     (0.0165, 0.007),
     (0.0, 0.007),
 ]
-MUG_HANDLE_R = 0.0025  # handle tube radius (4 sided)
+MUG_HANDLE_R = 0.0025  # handle tube radius
+MUG_HANDLE_SIDES = 6  # slice H1: 6 sides (were 4) so the smooth shading reads round
 # Handle centre line in the mug's frame (x outwards from the axis on the +X side, z above the base).
 MUG_HANDLE_PATH = ((0.019, 0.060), (0.0285, 0.056), (0.0300, 0.040), (0.0285, 0.022), (0.0185, 0.016))
 # ---- Slice D2: picture frames with pictograms (SPEC.md section 7, phase 2b layout table "Frame A/B/C"; metres) ------------
@@ -278,26 +291,27 @@ LEAF_LEN, LEAF_WIDTH, LEAF_GAP, LEAF_STEM, LEAF_STEM_W, LEAF_TILT_DEG = 0.066, 0
 LEAF_STATIONS = (0.14, 0.30, 0.46, 0.62, 0.78, 0.91)  # blade outline stations along the length (fractions)
 HEART_WIDTH, HEART_POINTS = 0.048, 16
 # ---- Slice D3: tea box body (layout in tools/blender/tea_layout.py; SPEC.md section 7 layout table "Tea box") ----------------
-SAUCER_R = 0.055  # saucer radius around the mug axis (slice D4; the planned value of the D3 gap check, now built)
+SAUCER_R = 0.0495  # saucer radius around the mug axis (slice D4; the planned value of the D3 gap check, now built)
 # Slice D4: saucer under the teacup, `Mat_Frame`, a lathe of (radius, z) points around the mug axis (read from the `Mug` object).
 # 8 mm high with a shallow well: the well floor is 1.3 mm above the worktop and the cup foot (underside at z 0) pokes 1.3 mm into it,
 # so the cup does not move and nothing is coplanar (no z-fighting between the cup base and the saucer).
-SAUCER_PROFILE = [
-    (0.0000, 0.0000),  # underside centre, resting on the worktop top
-    (0.0440, 0.0000),
-    (0.0525, 0.0035),  # outer slope
-    (0.0550, 0.0062),  # rim, outer edge (largest radius = SAUCER_R)
-    (0.0540, 0.0080),  # rim top
-    (0.0515, 0.0080),
-    (0.0420, 0.0045),  # inner slope down to the well
-    (0.0300, 0.0022),
-    (0.0265, 0.0013),  # well edge; the cup foot (radius 0.023 to 0.026 at its bevel) sits inside
-    (0.0000, 0.0013),  # well floor centre
+SAUCER_PROFILE = [  # (radius, z); slice H1: the radii of the D4 profile times 0.9, like the cup
+    (0.0000, 0.0000),
+    (0.0396, 0.0000),
+    (0.0473, 0.0035),
+    (0.0495, 0.0062),  # rim, outer edge (largest radius = SAUCER_R)
+    (0.0486, 0.0080),
+    (0.0464, 0.0080),
+    (0.0378, 0.0045),
+    (0.0270, 0.0022),
+    (0.0239, 0.0013),  # well edge; the cup foot (radius 0.021 to 0.0236 at its bevel) sits inside
+    (0.0000, 0.0013),
 ]
 SAUCER_SIDES = 20
 SAUCER_SHARP_DEG = 50.0  # same angle rule as 06_smooth_shading.py: the rim edges stay crisp, the slopes are smooth
 TEA_BOX_GAP_MIN = 0.020  # box to mug, planned saucer, kettle and tin: at least 20 mm
 BOX_TOL = 0.005  # a new part's bounding box must match the layout table within 5 mm
+HANG_BOX_TOL = 0.016  # slice H1: the hanging cups lean by HANG_TILT_DEG, so their boxes may differ more from the straight layout box
 CLEARANCE_MIN = 0.015  # plan-view distance of every new part to a steam column
 
 # Material slot order of the merged Room mesh. The first seven never change; slice D1 appends after them.
@@ -453,40 +467,33 @@ def surface(bm, frame, coords, tris, mat, open_faces):
     return verts
 
 
-def lobed_leaf(bm, base, yaw_deg, pitch_deg, roll_deg, length, mat, open_faces):
-    """Palmate leaf, 10 triangles: a raised centre vein (base, two vein points, tip), a long pointed centre lobe and a pointed
-    side lobe on each side, with a notch between them. The side lobes hang below the vein (a V fold along the vein) and the
-    tip droops. Points forward along +X of its frame, which is yawed, pitched up and rolled about its own axis."""
+def fan_leaf(bm, base, yaw_deg, tilt_deg, length, mat, open_faces):
+    """Palmate fan leaf, 20 triangles: five broad pointed lobes around a base point, each with a raised rib so it folds into two facets, valleys between
+    the lobes and a slight droop towards the tips. The leaf plane leans `tilt_deg` towards the camera (-Y) so the camera sees its face, and its centre
+    lobe points along the horizontal direction `yaw_deg` (projected into that plane). Open surface with explicit winding (counter-clockwise from +Z)."""
     L = length
-    w = LEAF_WIDTH
+    t = math.radians(tilt_deg)
+    n = Vector((0.0, -math.sin(t), math.cos(t)))
+    heading = Vector((math.cos(math.radians(yaw_deg)), math.sin(math.radians(yaw_deg)), 0.0))
+    f = heading - n * heading.dot(n)
+    f.normalize()
+    y_axis = n.cross(f)
+    frame = Matrix.Translation(base) @ Matrix((f, y_axis, n)).transposed().to_4x4()
 
-    def pt(x, y, vein):
-        z = (LEAF_FOLD * L if vein else LEAF_FOLD * L - LEAF_LOBE_DROP * L * abs(y) / (0.40 * L * w)) - LEAF_DROOP * L * (x / L) ** 2
-        return (x, y, z)
+    def pt(r, ang, rise=0.0):
+        x, y = r * L * math.cos(math.radians(ang)), r * L * math.sin(math.radians(ang))
+        return (x, y, rise * L - FAN_DROOP * L * (x / L) ** 2 - FAN_SIDE_DROP * L * abs(ang) / 66.0 * min(r, 1.0))
 
-    coords = [
-        pt(0.0, 0.0, True),  # 0 base
-        pt(0.30 * L, 0.0, True),  # 1 vein point
-        pt(0.62 * L, 0.0, True),  # 2 vein point
-        pt(1.00 * L, 0.0, True),  # 3 tip
-        pt(0.14 * L, -0.15 * L * w, False),  # 4 right shoulder
-        pt(0.50 * L, -0.40 * L * w, False),  # 5 right lobe tip
-        pt(0.70 * L, -0.14 * L * w, False),  # 6 right notch (between the side lobe and the long tip lobe)
-        pt(0.14 * L, 0.15 * L * w, False),  # 7 left shoulder
-        pt(0.50 * L, 0.40 * L * w, False),  # 8 left lobe tip
-        pt(0.70 * L, 0.14 * L * w, False),  # 9 left notch
-    ]
-    # Counter-clockwise seen from above (+X forward, +Y left): the right side runs base -> lobe -> vein.
-    tris = [
-        (0, 4, 1), (4, 5, 1), (5, 2, 1), (5, 6, 2), (6, 3, 2),  # right side
-        (0, 1, 7), (7, 1, 8), (8, 1, 2), (8, 2, 9), (9, 2, 3),  # left side
-    ]
-    frame = (
-        Matrix.Translation(base)
-        @ Matrix.Rotation(math.radians(yaw_deg), 4, "Z")
-        @ Matrix.Rotation(-math.radians(pitch_deg), 4, "Y")
-        @ Matrix.Rotation(math.radians(roll_deg), 4, "X")
-    )
+    coords = [(0.0, 0.0, 0.0)]  # 0: base
+    notch = [len(coords) + k for k in range(len(FAN_NOTCH_ANGLES))]
+    coords += [pt(r, a) for r, a in zip(FAN_NOTCH_RADII, FAN_NOTCH_ANGLES)]
+    tris = []
+    for k, (ang, rad) in enumerate(zip(FAN_TIP_ANGLES, FAN_TIP_RADII)):
+        rib, tip = len(coords), len(coords) + 1
+        coords.append(pt(FAN_RIB_R * rad, ang, FAN_RIB))
+        coords.append(pt(rad, ang))
+        a, b = notch[k], notch[k + 1]
+        tris += [(0, a, rib), (0, rib, b), (a, tip, rib), (rib, tip, b)]
     surface(bm, frame, coords, tris, mat, open_faces)
 
 
@@ -701,13 +708,13 @@ def build_plant(bm, open_faces):
             radii.append(r0 + (r1 - r0) * t)
         tube(bm, pts, radii, STEM_SIDES, IDX["Mat_Wood"], phase=math.pi / 4, smooth=True)
         tops.append(pts[-1])
-    for stem, yaw, pitch, roll, length, petiole in PLANT_LEAVES:
-        yawr, pr = math.radians(yaw), math.radians(max(pitch, 10.0) * 0.8)
+    for stem, yaw, tilt, length, petiole in PLANT_LEAVES:
+        yawr = math.radians(yaw)
         # A thin leaf stalk fans each leaf out from the stem top (so the leaves do not pile up on one point and the stem stays visible).
-        stalk = Vector((math.cos(yawr) * math.cos(pr), math.sin(yawr) * math.cos(pr), math.sin(pr))) * petiole
+        stalk = Vector((math.cos(yawr) * 0.8, math.sin(yawr) * 0.8, 0.55)).normalized() * petiole
         base = tops[stem] + stalk
         tube(bm, [tops[stem], base], [PETIOLE_R, PETIOLE_R * 0.8], 3, IDX["Mat_Wood"], caps=True, smooth=True)
-        lobed_leaf(bm, base, yaw, pitch, roll, length, IDX["Mat_Leaf"], open_faces)
+        fan_leaf(bm, base, yaw, tilt, length, IDX["Mat_Leaf"], open_faces)
     check_bounds(bm, v0, "floor plant", PLANT_REACH_X, (-1.0, PLANT_MAX_Y))
 
 
@@ -818,7 +825,7 @@ def build_wall_plant(bm, open_faces):
 
 
 def build_tin(bm):
-    lathe(bm, TIN_PROFILE, (TIN_XY[0], TIN_XY[1], 0.0), IDX["Mat_Tin"])
+    Shading.angle_faces.extend(lathe(bm, TIN_PROFILE, (TIN_XY[0], TIN_XY[1], 0.0), IDX["Mat_Tin"]))  # slice H1: smooth by angle (rim and lid edges stay crisp)
 
 
 def build_books(bm):
@@ -881,9 +888,12 @@ def build_jars(bm):
             tracked(bm, f"jar_{i}_content", lambda: lathe(bm, [(0.0, JAR_CONTENT_BASE), (JAR_CONTENT_R, JAR_CONTENT_BASE), (JAR_CONTENT_R, JAR_CONTENT_BASE + JAR_CONTENT_H), (0.0, JAR_CONTENT_BASE + JAR_CONTENT_H)], base, bag))
             tracked(bm, f"jar_{i}_body", lambda: lathe(bm, body_profile, base, IDX["Mat_Glass"]))
         else:
-            tracked(bm, f"jar_{i}_body", lambda: lathe(bm, body_profile, base, bag))
+            tracked(bm, f"jar_{i}_body", lambda: Shading.angle_faces.extend(lathe(bm, body_profile, base, bag)))
         lid = [(0.0, JAR_BODY_H), (JAR_LID_R, JAR_BODY_H), (JAR_LID_R, JAR_BODY_H + JAR_LID_H * 0.8), (JAR_NECK_R, JAR_BODY_H + JAR_LID_H), (0.0, JAR_BODY_H + JAR_LID_H)]
-        tracked(bm, f"jar_{i}_lid", lambda: lathe(bm, lid, base, wd))
+        tracked(bm, f"jar_{i}_lid", lambda: Shading.angle_faces.extend(lathe(bm, lid, base, wd)))
+
+
+RAIL_X = (HOOK_X[0] - MUG_W / 2 - 0.010, HOOK_X[-1] + MUG_W / 2 + 0.010)  # the bar spans the four cups with a little to spare
 
 
 def build_rail(bm):
@@ -899,18 +909,27 @@ def build_rail(bm):
     tracked(bm, "rail_bar", bar)
     bar_bottom = RAIL_Z - h
     base_z = MUG_TOP_Z - MUG_H
+    outer = max(r for r, _z in MUG_PROFILE)
+    reach = max(p[0] for p in MUG_HANDLE_PATH) + MUG_HANDLE_R
     for i, hx in enumerate(HOOK_X):
-        # Hook: a thin rod below the bar that ends just inside the cup opening (the cup hangs from it).
-        tracked(bm, f"rail_hook_{i}", lambda hx=hx: tube(bm, [(hx, RAIL_Y, RAIL_Z), (hx, RAIL_Y, bar_bottom - HOOK_LEN - HOOK_INTO_CUP)], [HOOK_R, HOOK_R], 4, iron, phase=math.pi / 4))
+        cx = hx + MUG_W / 2 - reach  # cup axis before it swings (its bounding box is centred on hx)
+        assert abs((cx - outer) - (hx - MUG_W / 2)) < BOX_TOL, "mug body does not fit the layout width"
+        y_cup = RAIL_Y + HANG_PLANE_DY
+        pin_x, pin_z = cx + HANG_PIN_IN_HANDLE[0], base_z + HANG_PIN_IN_HANDLE[1]
+        # Hook: a rod down from the bar, a short corner, then a horizontal pin towards -Y that the handle loop hangs on.
+        hook_pts = [(pin_x, RAIL_Y, RAIL_Z), (pin_x, RAIL_Y, pin_z + 0.004), (pin_x, RAIL_Y - 0.004, pin_z), (pin_x, RAIL_Y - HANG_PIN_LEN, pin_z)]
+        tracked(bm, f"rail_hook_{i}", lambda pts=hook_pts: tube(bm, pts, [HOOK_R] * 4, 4, iron, phase=math.pi / 4, smooth=True, ref_axis=(1, 0, 0)))
 
-        def mug(hx=hx):
-            # The handle sticks out on +X; the bounding box (not the body) is centred on the hook x, MUG_W wide.
-            outer = max(r for r, _z in MUG_PROFILE)
-            reach = max(p[0] for p in MUG_HANDLE_PATH) + MUG_HANDLE_R
-            cx = hx + MUG_W / 2 - reach  # body axis
-            assert abs((cx - outer) - (hx - MUG_W / 2)) < BOX_TOL, "mug body does not fit the layout width"
-            lathe(bm, MUG_PROFILE, (cx, RAIL_Y, base_z), frame, MUG_SIDES)
-            tube(bm, [(cx + px, RAIL_Y, base_z + pz) for px, pz in MUG_HANDLE_PATH], [MUG_HANDLE_R] * len(MUG_HANDLE_PATH), 4, frame, phase=math.pi / 4, ref_axis=(0, 1, 0))
+        def mug(cx=cx, y_cup=y_cup, pin_x=pin_x, pin_z=pin_z):
+            v0 = len(bm.verts)
+            faces = lathe(bm, MUG_PROFILE, (cx, y_cup, base_z), frame, MUG_SIDES)
+            Shading.angle_faces.extend(faces)
+            tube(bm, [(cx + px, y_cup, base_z + pz) for px, pz in MUG_HANDLE_PATH], [MUG_HANDLE_R] * len(MUG_HANDLE_PATH), MUG_HANDLE_SIDES, frame,
+                 phase=math.pi / 4, ref_axis=(0, 1, 0), smooth=True)
+            # The cup swings about the pin (axis Y): its top leans towards -X, the handle side goes up.
+            bm.verts.ensure_lookup_table()
+            rot = Matrix.Rotation(-math.radians(HANG_TILT_DEG), 3, "Y")
+            bmesh.ops.rotate(bm, verts=[bm.verts[k] for k in range(v0, len(bm.verts))], cent=(pin_x, y_cup, pin_z), matrix=rot)
 
         tracked(bm, f"rail_mug_{i}", mug)
 
@@ -1059,8 +1078,10 @@ def expected_boxes():
     h = RAIL_SECTION / 2
     out["rail_bar"] = ((RAIL_X[0], RAIL_Y - h, RAIL_Z - h), (RAIL_X[1], WALL_FACE, RAIL_Z + h))
     for i, hx in enumerate(HOOK_X):
-        out[f"rail_hook_{i}"] = ((hx - HOOK_R, RAIL_Y - HOOK_R, RAIL_Z - h - HOOK_LEN), (hx + HOOK_R, RAIL_Y + HOOK_R, RAIL_Z))
-        out[f"rail_mug_{i}"] = ((hx - MUG_W / 2, RAIL_Y - 0.0215, MUG_TOP_Z - MUG_H), (hx + MUG_W / 2, RAIL_Y + 0.0215, MUG_TOP_Z))
+        pin_x = hx + MUG_W / 2 - (max(q[0] for q in MUG_HANDLE_PATH) + MUG_HANDLE_R) + HANG_PIN_IN_HANDLE[0]
+        pin_z = MUG_TOP_Z - MUG_H + HANG_PIN_IN_HANDLE[1]
+        out[f"rail_hook_{i}"] = ((pin_x - HOOK_R, RAIL_Y - HANG_PIN_LEN, pin_z - HOOK_R), (pin_x + HOOK_R, RAIL_Y + HOOK_R, RAIL_Z))
+        out[f"rail_mug_{i}"] = ((hx - MUG_W / 2, RAIL_Y + HANG_PLANE_DY - 0.0215, MUG_TOP_Z - MUG_H), (hx + MUG_W / 2, RAIL_Y + HANG_PLANE_DY + 0.0215, MUG_TOP_Z))
     for name, ((x0, x1), (z0, z1), _p, _m) in FRAMES.items():
         out[f"frame_{name}"] = ((x0, WALL_FACE - FRAME_DEPTH, z0), (x1, WALL_FACE, z1))
     bx, by = tea.BOX_CENTER
@@ -1087,7 +1108,8 @@ def check_new_parts(bm):
         dev = max(max(abs(lo[k] - elo[k]), abs(hi[k] - ehi[k])) for k in range(3))
         size = (hi - lo) * 1000
         print(f"  {name:15s} ({lo.x:+.4f} {lo.y:+.4f} {lo.z:+.4f}) .. ({hi.x:+.4f} {hi.y:+.4f} {hi.z:+.4f})  size {size.x:5.1f} x {size.y:5.1f} x {size.z:5.1f}  dev {dev * 1000:4.1f}")
-        if dev > BOX_TOL:
+        tol = HANG_BOX_TOL if name.startswith("rail_mug_") else BOX_TOL  # a swung cup differs from the straight layout box
+        if dev > tol:
             bad.append(name)
     if bad:
         raise SystemExit(f"04_room: parts outside the layout table by more than {BOX_TOL * 1000:.0f} mm: {bad}")

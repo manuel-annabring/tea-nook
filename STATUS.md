@@ -8,6 +8,7 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 - **State:** Phase 2b slices D1 to D5 are done on `phase/2b-details` (D0 approved the amendment on 2026-11-06, D-084). The finished scene is inside every budget (table below). One SPEC criterion is not met: the shelf casts no shadow on the back wall with the current sun (D-111, a decision for Manuel). Phase 3 is not started.
 - **Next action:** Manuel's review of phase 2b (`REVIEW-phase-2b.md`: verdict PASS, 0 blockers, 6 should-fix, 7 nits, 6 open questions in section 8; evidence images are local in `review/phase-2b/`). Then small fix slices if wanted and the phase 3 kickoff (slice 3.1 uses `TeaBag_0..3`).
 - **Blockers:** none.
+- **Branch `fix/h1-wishes` (not merged, 2026-11-19):** Manuel's five wishes after the phase 2b review (shelf and rail 35 mm right, cups hang by the handle and lean, smooth shading for jars, cups and tin, new broad-leaf floor plant, hero cup scaled to 0.9), D-115. Contract check passes (6894 triangles), 40 draw calls, 16698 triangles in the app at hero; typecheck, lint, 43 tests and build pass. Evidence (local, git-ignored): `review/h1/`.
 
 ## Slices
 
