@@ -324,7 +324,6 @@ NEW_MATERIAL_COLORS = {
     "Mat_Bag1": "#B5B84A",
     "Mat_Bag2": "#E0B84A",
     "Mat_Bag3": "#B3213F",
-    "Mat_Kettle": "#8FB8A0",  # slice H1: the hanging cups are sage like the kettle (the material already exists; the Room just gets a slot for it)
 }
 for _arg in sys.argv:
     if _arg.startswith("--jar-glass="):
@@ -898,7 +897,7 @@ RAIL_X = (HOOK_X[0] - MUG_W / 2 - 0.010, HOOK_X[-1] + MUG_W / 2 + 0.010)  # the 
 
 
 def build_rail(bm):
-    iron, frame = IDX["Mat_Iron"], IDX["Mat_Kettle"]  # `frame` is the cup material (sage since H1)
+    iron, frame = IDX["Mat_Iron"], IDX["Mat_Frame"]  # `frame` is the cup material (cream again, D-139)
     h = RAIL_SECTION / 2
     x0, x1 = RAIL_X
 

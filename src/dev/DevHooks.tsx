@@ -138,6 +138,29 @@ function isPreset(name: string | null): name is CameraPresetName {
   return name !== null && name in CAMERA.presets
 }
 
+const limitRestorers = new WeakSet<object>()
+
+/**
+ * `?cam=side|top` lifts the orbit limits so the dev pose is not clamped. They must not stay lifted: on the first real
+ * drag or wheel input (the controls' `start` event) the limits from `CAMERA.limits` come back (phase 3 review, S2).
+ */
+function restoreLimitsOnNextDrag(controls: NonNullable<Rig['controls']>) {
+  if (limitRestorers.has(controls)) return
+  limitRestorers.add(controls)
+  const restore = () => {
+    controls.removeEventListener('start', restore)
+    limitRestorers.delete(controls)
+    const { limits } = CAMERA
+    controls.minAzimuthAngle = (limits.azimuthMin * Math.PI) / 180
+    controls.maxAzimuthAngle = (limits.azimuthMax * Math.PI) / 180
+    controls.minPolarAngle = (limits.polarMin * Math.PI) / 180
+    controls.maxPolarAngle = (limits.polarMax * Math.PI) / 180
+    controls.minDistance = limits.distanceMin
+    controls.maxDistance = limits.distanceMax
+  }
+  controls.addEventListener('start', restore)
+}
+
 function applyPose(rig: Rig, pose: CameraPose) {
   const marker = rig.scene.getObjectByName('Orbit_Target')
   if (!marker) throw new Error('Orbit_Target is missing from the model')
@@ -155,6 +178,7 @@ function applyPose(rig: Rig, pose: CameraPose) {
       rig.controls.maxPolarAngle = Math.PI
       rig.controls.minDistance = 0
       rig.controls.maxDistance = Infinity
+      restoreLimitsOnNextDrag(rig.controls)
     }
     frameCamera(rig.camera, rig.controls, marker, pose)
   }

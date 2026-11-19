@@ -7,7 +7,7 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 - **Current phase:** Phase 3 (Interaction, UI and release prep) is done on branch `phase/3-interaction` (review `REVIEW-phase-3.md`: PASS, 0 blockers, 6 should-fix); Manuel's answers to the review are applied in the fix commit after it (D-136 to D-139). Not merged into `main` yet. Phase 2b and earlier are merged into `main`.
 - **State:** all four phase 3 slices are done; budgets met (table "Budget table (slice 3.3)"). Not verified: 60 fps and the 4x CPU throttle on Manuel's laptop, a real slow-3G load, the GitHub deploy, Safari and Firefox.
 - **Phase 3 (started 2026-11-19, branch `phase/3-interaction`):** prep done (D-116: taupe wall, closer hero, AO fix). Slices 3.1 (click to cycle tea, D-117 to D-122), 3.2 (overlay, D-123 to D-127) and 3.3 (performance and budget check, D-128 to D-132; every budget met, table "Budget table (slice 3.3)" below) and 3.4 (deploy workflow and README, D-133 to D-135) done; phase 3 is complete, review next.
-- **Next action:** Manuel's phase 3 review ("Try this" in `REVIEW-phase-3.md`), then merge `phase/3-interaction` into `main`, add a git remote and push (Claude never creates the remote). Open: question 6 of the review (the dev-only `applyPose` fix and a CLAUDE.md lesson), waiting for Manuel.
+- **Next action:** Manuel's phase 3 review ("Try this" in `REVIEW-phase-3.md`), then merge `phase/3-interaction` into `main`, add a git remote and push (Claude never creates the remote). Review question 6 (`applyPose`) is done (D-139).
 - **Blockers:** none.
 
 ## Slices
