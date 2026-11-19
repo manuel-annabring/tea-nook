@@ -31,7 +31,22 @@ interface NookHooks {
   /** Renders one frame and returns it as a JPEG data URL (the canvas buffer is not preserved between frames). */
   snapshot: () => string
   pick: (x: number, y: number) => string | null
-  stats: () => { drawCalls: number; triangles: number }
+  /**
+   * Last frame's draw calls and triangles (shadow pass included), the unique model materials in the scene graph
+   * (`materials`, named; invisible tea bag hit boxes and the dev pointer marker are not counted), the steam shader
+   * materials (`steamMaterials`, one per steam mesh), the compiled program count and the renderer's live geometry and
+   * texture counts. SPEC section 5 budgets `materials + steamMaterials` (at most 20).
+   */
+  stats: () => {
+    drawCalls: number
+    triangles: number
+    materials: number
+    materialNames: string[]
+    steamMaterials: number
+    programs: number
+    geometries: number
+    textures: number
+  }
   /** Live values of the sun, the front fill and the hemisphere fill in the scene (to compare with `LIGHT_PRESETS.morning`). */
   lights: () => {
     sun: {
@@ -246,8 +261,28 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
       return null
     },
     stats() {
-      const { render } = rigRef.current.gl.info
-      return { drawCalls: render.calls, triangles: render.triangles }
+      const { gl, scene } = rigRef.current
+      const { render, memory } = gl.info
+      const names = new Set<string>()
+      const steam = new Set<Material>()
+      scene.traverse((node) => {
+        const material = (node as { material?: Material | Material[] }).material
+        if (!material || node.userData.hitProxy || node.name === 'PointerMarker') return
+        for (const m of Array.isArray(material) ? material : [material]) {
+          if (node.name.startsWith('SteamMesh_')) steam.add(m)
+          else names.add(m.name)
+        }
+      })
+      return {
+        drawCalls: render.calls,
+        triangles: render.triangles,
+        materials: names.size,
+        materialNames: [...names].sort(),
+        steamMaterials: steam.size,
+        programs: gl.info.programs?.length ?? 0,
+        geometries: memory.geometries,
+        textures: memory.textures,
+      }
     },
     lights() {
       const { scene, gl } = rigRef.current

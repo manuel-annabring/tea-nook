@@ -14,7 +14,7 @@ export function PointerMarker() {
     mesh.position.set(pointers.tea.x, pointers.tea.y, pointers.tea.z)
   })
   return (
-    <mesh ref={ref} visible={false}>
+    <mesh ref={ref} name="PointerMarker" visible={false}>
       <sphereGeometry args={[0.006, 12, 12]} />
       <meshBasicMaterial color="#ef9f27" />
     </mesh>
