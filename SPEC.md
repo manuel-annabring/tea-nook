@@ -138,7 +138,7 @@ The code finds and animates parts by name, so the names and rules below are fixe
 
 ### Coordinate frame
 
-Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center of the counter top surface. Front (the camera side) is Blender -Y, the back wall is at +Y, the left wall (with the window) is at -X. Units are meters. Proposed footprint: counter 0.60 (x) by 0.45 (y), walls 0.50 high above the counter top, mug about 0.09 high, kettle about 0.20 high (props are exaggerated for readability).
+Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center of the counter top surface. Front (the camera side) is Blender -Y, the back wall is at +Y, the left wall (with the window) is at -X. Units are meters. Proposed footprint: counter 0.60 (x) by 0.45 (y), walls 0.50 high above the counter top, mug about 0.08 high (0.09 before the 2026-11-19 amendment), kettle about 0.20 high (props are exaggerated for readability).
 
 > **AMENDMENT 2026-11-04 (slice 2.0), asked for by Manuel after seeing the variant A blockout:** wall height above the counter top raised from 0.30 to 0.50 so the walls read as a room and the window can be larger. Nothing else in this section changes: names, parents, origins, markers and materials are untouched. Composition target: section 3.
 
@@ -185,6 +185,8 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 > - **Budgets:** materials at most 20, draw calls under 50 (counted with the shadow pass). Triangles (target 30k, cap 100k) and GLB size (3 MB) are unchanged. Both new limits are our own proposals from the first outline, not technical limits; the estimate for the new scene is 36 to 44 draw calls.
 > - **Markers, existing names, parents, origins:** unchanged. The `Mug` and `Kettle` shapes may change in D4 (wider cup, kettle base plate and dark handle), but their names, origins at the base centre, heights (about 0.09 and 0.20), parents and marker meanings stay; `Steam_Tea` and `Steam_Kettle` move to the new rim and spout centre (a marker move, not a contract change).
 > - **Code twins:** `tools/blender/contract_spec.py` and `src/nook/contract.ts` get the new names in D3 (the twin test covers it). `MATERIAL_NAMES` and the palette in `look.ts` get the five new materials; `PALETTE.Mat_Bag0..3` are derived from `TEAS` (same colours as the liquid), not duplicated.
+
+> **AMENDMENT 2026-11-19 (slice H1, requested by Manuel):** the hero `Mug` is scaled to 0.9 about its base centre: about **0.08 high** (0.081, was 0.09), rim radius 0.0416; `TeaSurface` and `Steam_Tea` follow, the saucer in `Room` has radius 49.5 mm. Names, origins, parents and marker meanings are unchanged. Wherever this spec says the mug is "about 0.09" high, read 0.08. The wall shelf, jars and rail sit 35 mm further right (`SHIFT_X`), the hanging cups hang by the handle on J hooks and lean 16 degrees (cup pitch 64 mm); the layout table in section 7 is superseded where it differs (decision D-115).
 
 ### Budgets (proposed, confirm after the first export)
 
@@ -578,7 +580,7 @@ Out of scope: palette changes (terracotta mug and sage kettle stay), speckle tex
 Depends on: D3
 Taste-critical: yes
 Acceptance criteria:
-- [ ] Contract check passes; names, origins at the base centre, parents and applied transforms unchanged; `Mug` about 0.09 and `Kettle` about 0.20 high (within 5 mm).
+- [ ] Contract check passes; names, origins at the base centre, parents and applied transforms unchanged; `Mug` about 0.08 (amendment 2026-11-19) and `Kettle` about 0.20 high (within 5 mm).
 - [ ] `Steam_Tea` within 5 mm of the new rim centre and `Steam_Kettle` within 5 mm of the spout opening centre; the steam meshes start at the markers (`__nook.worldPosition` equals the mesh base within 1 cm).
 - [ ] `Kettle` still exports as a two-mesh group found by `getObjectByName('Kettle')`; handle and base plate use `Mat_KettleDetail`.
 - [ ] The tea surface is visible from the hero camera: at least half of a grid of points on the `TeaSurface` disc projected with `__nook.projectPoint` pick `TeaSurface` (output pasted).
