@@ -17,7 +17,8 @@ export interface TeaRig {
   bags: BagRig[]
   surface: MeshStandardMaterial
   target: Color
-  targetIndex: number
+  /** The colour string `target` was parsed from. */
+  targetHex: string
 }
 
 /** Collects the four bags (under the model `root`), their hit boxes (siblings of the model, found from the `scene`) their hit boxes and the tea surface material. Throws with the missing name. */
@@ -31,7 +32,7 @@ export function createTeaRig(root: Object3D, scene: Object3D): TeaRig {
   })
   const surface = (root.getObjectByName('TeaSurface') as Mesh | undefined)?.material as MeshStandardMaterial | undefined
   if (!surface) throw new Error('TeaSurface is missing from the model (SPEC.md section 5)')
-  return { bags, surface, target: new Color(), targetIndex: -1 }
+  return { bags, surface, target: new Color(), targetHex: '' }
 }
 
 /** Puts every bag at its rest height (before the rig is dropped). */
@@ -45,11 +46,12 @@ export function resetTeaRig(rig: TeaRig): void {
 /** Per frame: the active bag stands `bagLift` above its rest height, the others sit at rest; the tea surface colour follows the tea. */
 export function tickTeaSelection(rig: TeaRig, teaIndex: number, delta: number): void {
   const dt = Math.min(delta, TEA_SELECT.maxDelta)
-  if (rig.targetIndex !== teaIndex) {
-    const tea = TEAS[teaIndex]
-    if (!tea) throw new Error(`TEAS has no entry ${teaIndex}`)
+  const tea = TEAS[teaIndex]
+  if (!tea) throw new Error(`TEAS has no entry ${teaIndex}`)
+  // Compared by value, so an edit of the selected tea in the dev panel arrives too; parsed only when it changes.
+  if (rig.targetHex !== tea.liquidColor) {
     rig.target.set(tea.liquidColor)
-    rig.targetIndex = teaIndex
+    rig.targetHex = tea.liquidColor
   }
   const c = rig.surface.color
   const k = TEA_SELECT.teaDamping

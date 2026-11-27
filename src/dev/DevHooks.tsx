@@ -1,14 +1,17 @@
 import { useFrame, useThree, type RootState } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
-import { Box3, DirectionalLight, HemisphereLight, MathUtils, Raycaster, Spherical, Vector2, Vector3, type Camera, type Material, type Object3D, type Scene, type ShaderMaterial, type WebGLRenderer } from 'three'
+import { Box3, Color, DirectionalLight, HemisphereLight, MathUtils, MeshStandardMaterial, PointLight, Raycaster, Spherical, Vector2, Vector3, type Camera, type Material, type Mesh, type Object3D, type Scene, type ShaderMaterial, type WebGLRenderer } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { CAMERA, type CameraPose, type CameraPresetName } from '../config/look.ts'
+import { TEA_BAG_NAMES } from '../nook/contract.ts'
 import type { SteamUniforms } from '../nook/steamMaterial.ts'
 import { getRoomAoIntensity, setRoomAoIntensity } from '../nook/roomAo.ts'
 import { useStore } from '../store/useStore.ts'
 import { frameCamera } from '../scene/framing.ts'
 import { sunAnglesFromPosition } from '../lib/sunAngles.ts'
-import { applyLightLook, LIGHT_NAMES, type LightLook } from '../scene/lightRig.ts'
+import { patchTimeValues, type TimeOfDay, type TimePatch } from '../lib/timeOfDay.ts'
+import { LIGHT_NAMES } from '../scene/lightRig.ts'
+import { timeLive, timePresets } from '../scene/timeOfDayLive.ts'
 
 interface NookHooks {
   /** Azimuth and polar angle in degrees, distance in meters, all relative to the controls target. */
@@ -47,7 +50,7 @@ interface NookHooks {
     geometries: number
     textures: number
   }
-  /** Live values of the sun, the front fill and the hemisphere fill in the scene (to compare with `LIGHT_PRESETS.morning`). */
+  /** Live values of the sun, the front fill, the hemisphere fill and the lamp in the scene (to compare with `LIGHT_PRESETS`). */
   lights: () => {
     sun: {
       color: string
@@ -55,21 +58,35 @@ interface NookHooks {
       position: [number, number, number]
       castShadow: boolean
       mapSize: number
-      /** The fitted shadow camera volume (left, right, bottom, top, near, far in meters) and the texel sizes in millimeters. */
-      shadow: { left: number; right: number; bottom: number; top: number; near: number; far: number; texelXmm: number; texelYmm: number }
+      /**
+       * The fitted shadow camera volume (left, right, bottom, top, near, far in meters) and the texel sizes in millimeters.
+       * `casterExtent` is the largest |x|, |y| or |z| of the bounding box corners of `Room`, `Mug` and `Kettle` in the
+       * clip space of the shadow camera as last rendered: above 1 means something is clipped. `autoUpdate` is false for
+       * a frozen (`static`) map, which then only renders again after a refit.
+       */
+      shadow: { left: number; right: number; bottom: number; top: number; near: number; far: number; texelXmm: number; texelYmm: number; casterExtent: number; autoUpdate: boolean }
     } | null
     frontFill: { color: string; intensity: number; position: [number, number, number]; castShadow: boolean } | null
     fill: { skyColor: string; groundColor: string; intensity: number } | null
+    lamp: { color: string; intensity: number; position: [number, number, number]; castShadow: boolean; visible: boolean } | null
     toneMapping: number
     shadowMapEnabled: boolean
   }
   /** Moves the camera to a pose around the `Orbit_Target` marker (azimuth and polar in degrees, distance in meters), like a preset. */
   setCamera: (pose: CameraPose) => void
   /**
-   * Changes live light values without the panel (same code path as the Leva Light folder: `applyLightLook`, which also
-   * refits the shadow). Unspecified values keep their current setting.
+   * Changes values of the active time-of-day preset without the panel (same code path as the Leva Light folder:
+   * `patchTimeValues`) and applies them at once, shadow refit included. Unspecified values keep their current setting.
+   * `sunElevation` is accepted as a name for `sunAltitude`.
    */
-  setLights: (patch: Partial<LightLook>) => void
+  setLights: (patch: Partial<TimePatch> & { sunElevation?: number }) => void
+  /** The selected time of day, the damped blend factor and the live values read back from the scene and the page. */
+  timeOfDay: () => TimeReadout
+  /**
+   * Every live time-of-day value as a plain unrounded number, read from the scene objects, the materials, the steam
+   * uniforms and the computed page style (to sample a transition frame by frame with `step`).
+   */
+  timeSamples: () => Record<string, number>
   /**
    * Runs `controls.update()` `frames` times at once, so damped orbit input (drags, wheel) settles without waiting for
    * real frames (the built-in browser pane only runs requestAnimationFrame at 1 Hz while hidden).
@@ -98,7 +115,37 @@ interface NookHooks {
   useStore: typeof useStore
 }
 
+/** Colours are sRGB hex with #, angles in degrees. */
+interface TimeReadout {
+  selected: TimeOfDay
+  blend: number
+  sunAzimuth: number
+  sunElevation: number
+  sunDistance: number
+  sunColor: string
+  sunIntensity: number
+  fillSkyColor: string
+  fillGroundColor: string
+  fillIntensity: number
+  frontIntensity: number
+  frontColor: string
+  lampIntensity: number
+  lampColor: string
+  /** `Window_Sky` material: colour, emissive colour and strength. */
+  sky: { color: string; emissive: string; emissiveIntensity: number } | null
+  /** `Mat_Lamp` material: emissive colour and strength. */
+  lampShade: { emissive: string; emissiveIntensity: number } | null
+  /** Emissive strength of the four tea colour materials. */
+  bagGlow: number[]
+  steam: Record<'tea' | 'kettle', { tint: string; opacity: number } | null>
+  canvasBackground: string
+  /** Computed CSS colours of the page body and the title, and the two CSS blend percentages. */
+  page: { background: string; text: string; pageBlend: string; textBlend: string }
+}
+
 interface SteamUniformValues {
+  uTint: string
+  uTintOpacity: number
   uDensity: number
   uHeight: number
   uPointerBlend: number
@@ -182,6 +229,24 @@ function applyPose(rig: Rig, pose: CameraPose) {
     }
     frameCamera(rig.camera, rig.controls, marker, pose)
   }
+}
+
+function casterExtent(scene: Scene, camera: Camera): number {
+  let extent = 0
+  for (const name of ['Room', 'Mug', 'Kettle']) {
+    const object = scene.getObjectByName(name)
+    if (!object) continue
+    box.setFromObject(object)
+    for (const x of [box.min.x, box.max.x]) {
+      for (const y of [box.min.y, box.max.y]) {
+        for (const z of [box.min.z, box.max.z]) {
+          vec.set(x, y, z).applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix)
+          extent = Math.max(extent, Math.abs(vec.x), Math.abs(vec.y), Math.abs(vec.z))
+        }
+      }
+    }
+  }
+  return extent
 }
 
 function createHooks(rigRef: { current: Rig }): NookHooks {
@@ -313,6 +378,7 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
       let sun: ReturnType<NookHooks['lights']>['sun'] = null
       let frontFill: ReturnType<NookHooks['lights']>['frontFill'] = null
       let fill: ReturnType<NookHooks['lights']>['fill'] = null
+      let lamp: ReturnType<NookHooks['lights']>['lamp'] = null
       scene.traverse((node) => {
         if (node instanceof DirectionalLight && node.name === LIGHT_NAMES.sun) {
           const cam = node.shadow.camera
@@ -331,6 +397,8 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
               far: cam.far,
               texelXmm: ((cam.right - cam.left) / node.shadow.mapSize.x) * 1000,
               texelYmm: ((cam.top - cam.bottom) / node.shadow.mapSize.y) * 1000,
+              casterExtent: casterExtent(scene, cam),
+              autoUpdate: node.shadow.autoUpdate,
             },
           }
         } else if (node instanceof DirectionalLight && node.name === LIGHT_NAMES.front) {
@@ -340,6 +408,14 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
             position: [node.position.x, node.position.y, node.position.z],
             castShadow: node.castShadow,
           }
+        } else if (node instanceof PointLight && node.name === LIGHT_NAMES.lamp) {
+          lamp = {
+            color: `#${node.color.getHexString().toUpperCase()}`,
+            intensity: node.intensity,
+            position: [node.position.x, node.position.y, node.position.z],
+            castShadow: node.castShadow,
+            visible: node.visible,
+          }
         } else if (node instanceof HemisphereLight) {
           fill = {
             skyColor: `#${node.color.getHexString().toUpperCase()}`,
@@ -348,28 +424,116 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
           }
         }
       })
-      return { sun, frontFill, fill, toneMapping: gl.toneMapping, shadowMapEnabled: gl.shadowMap.enabled }
+      return { sun, frontFill, fill, lamp, toneMapping: gl.toneMapping, shadowMapEnabled: gl.shadowMap.enabled }
     },
     setCamera(pose) {
       applyPose(rigRef.current, pose)
     },
     setLights(patch) {
+      patchTimeValues(timePresets[useStore.getState().timeOfDay], { ...patch, sunAltitude: patch.sunElevation ?? patch.sunAltitude })
+      // A zero time step: every `useFrame` callback applies the new values without advancing any animation.
+      this.step(1, 0)
+    },
+    timeOfDay() {
       const { scene } = rigRef.current
-      const sun = scene.getObjectByName(LIGHT_NAMES.sun) as DirectionalLight | undefined
-      const hemisphere = scene.getObjectByName(LIGHT_NAMES.hemisphere) as HemisphereLight | undefined
-      const front = scene.getObjectByName(LIGHT_NAMES.front) as DirectionalLight | undefined
-      if (!sun || !hemisphere || !front) throw new Error('setLights: Sun, HemiFill or FrontFill is missing from the scene')
-      const angles = sunAnglesFromPosition([sun.position.x, sun.position.y, sun.position.z])
-      applyLightLook(scene, {
-        sunAzimuth: angles.azimuth,
-        sunElevation: angles.elevation,
-        sunIntensity: sun.intensity,
-        sunColor: `#${sun.color.getHexString()}`,
-        hemisphereIntensity: hemisphere.intensity,
-        frontIntensity: front.intensity,
-        frontColor: `#${front.color.getHexString()}`,
-        ...patch,
+      const hex = (c: Color) => `#${c.getHexString().toUpperCase()}`
+      const sun = scene.getObjectByName(LIGHT_NAMES.sun) as DirectionalLight
+      const hemisphere = scene.getObjectByName(LIGHT_NAMES.hemisphere) as HemisphereLight
+      const front = scene.getObjectByName(LIGHT_NAMES.front) as DirectionalLight
+      const lamp = scene.getObjectByName(LIGHT_NAMES.lamp) as PointLight
+      const sky = (find('Window_Sky') as Mesh | undefined)?.material as MeshStandardMaterial | undefined
+      let shade: MeshStandardMaterial | undefined
+      find('Room')?.traverse((node) => {
+        const material = (node as Mesh).material
+        if (material instanceof MeshStandardMaterial && material.name === 'Mat_Lamp') shade = material
       })
+      const steam = (slot: 'tea' | 'kettle') => {
+        const u = ((find(`SteamMesh_${slot}`) as Mesh | undefined)?.material as Material | undefined)?.userData.uniforms as SteamUniforms | undefined
+        return u ? { tint: hex(u.uTint.value), opacity: u.uTintOpacity.value } : null
+      }
+      // The sun as it is in the scene (position of the light), not the numbers it was set from.
+      const angles = sunAnglesFromPosition([sun.position.x, sun.position.y, sun.position.z])
+      const title = document.querySelector('.title')
+      const root = document.documentElement.style
+      return {
+        selected: useStore.getState().timeOfDay,
+        blend: timeLive.blend,
+        sunAzimuth: angles.azimuth,
+        sunElevation: angles.altitude,
+        sunDistance: sun.position.length(),
+        sunColor: hex(sun.color),
+        sunIntensity: sun.intensity,
+        fillSkyColor: hex(hemisphere.color),
+        fillGroundColor: hex(hemisphere.groundColor),
+        fillIntensity: hemisphere.intensity,
+        frontIntensity: front.intensity,
+        frontColor: hex(front.color),
+        lampIntensity: lamp.intensity,
+        lampColor: hex(lamp.color),
+        sky: sky ? { color: hex(sky.color), emissive: hex(sky.emissive), emissiveIntensity: sky.emissiveIntensity } : null,
+        lampShade: shade ? { emissive: hex(shade.emissive), emissiveIntensity: shade.emissiveIntensity } : null,
+        bagGlow: TEA_BAG_NAMES.map((name) => ((find(name) as Mesh).material as MeshStandardMaterial).emissiveIntensity),
+        steam: { tea: steam('tea'), kettle: steam('kettle') },
+        canvasBackground: scene.background instanceof Color ? hex(scene.background) : '',
+        page: {
+          background: getComputedStyle(document.body).backgroundColor,
+          text: title ? getComputedStyle(title).color : '',
+          pageBlend: root.getPropertyValue('--tod-page'),
+          textBlend: root.getPropertyValue('--tod-text'),
+        },
+      }
+    },
+    timeSamples() {
+      const { scene } = rigRef.current
+      const out: Record<string, number> = { blend: timeLive.blend }
+      const put = (key: string, value: number | Color | Vector3) => {
+        if (typeof value === 'number') out[key] = value
+        else if (value instanceof Color) Object.assign(out, { [`${key}.r`]: value.r, [`${key}.g`]: value.g, [`${key}.b`]: value.b })
+        else Object.assign(out, { [`${key}.x`]: value.x, [`${key}.y`]: value.y, [`${key}.z`]: value.z })
+      }
+      const sun = scene.getObjectByName(LIGHT_NAMES.sun) as DirectionalLight
+      const hemisphere = scene.getObjectByName(LIGHT_NAMES.hemisphere) as HemisphereLight
+      const front = scene.getObjectByName(LIGHT_NAMES.front) as DirectionalLight
+      const lamp = scene.getObjectByName(LIGHT_NAMES.lamp) as PointLight
+      const angles = sunAnglesFromPosition([sun.position.x, sun.position.y, sun.position.z])
+      put('sun.azimuth', angles.azimuth)
+      put('sun.elevation', angles.altitude)
+      put('sun.position', sun.position)
+      put('sun.color', sun.color)
+      put('sun.intensity', sun.intensity)
+      put('hemi.sky', hemisphere.color)
+      put('hemi.ground', hemisphere.groundColor)
+      put('hemi.intensity', hemisphere.intensity)
+      put('front.color', front.color)
+      put('front.intensity', front.intensity)
+      put('lamp.color', lamp.color)
+      put('lamp.intensity', lamp.intensity)
+      const sky = (find('Window_Sky') as Mesh).material as MeshStandardMaterial
+      put('sky.color', sky.color)
+      put('sky.glow', sky.emissiveIntensity)
+      find('Room')?.traverse((node) => {
+        const material = (node as Mesh).material
+        if (material instanceof MeshStandardMaterial && material.name === 'Mat_Lamp') put('shade.glow', material.emissiveIntensity)
+      })
+      put('bag.glow', ((find(TEA_BAG_NAMES[0] as string) as Mesh).material as MeshStandardMaterial).emissiveIntensity)
+      for (const slot of ['tea', 'kettle'] as const) {
+        const u = ((find(`SteamMesh_${slot}`) as Mesh).material as Material).userData.uniforms as SteamUniforms
+        put(`steam.${slot}.tint`, u.uTint.value)
+        put(`steam.${slot}.opacity`, u.uTintOpacity.value)
+      }
+      if (scene.background instanceof Color) put('canvas.background', scene.background)
+      // Computed CSS colours come as `color(srgb r g b / a)` or `rgb(r, g, b)`: take the numbers as they are.
+      const css = (key: string, selector: string, property: 'color' | 'backgroundColor') => {
+        const element = document.querySelector(selector)
+        if (!element) return
+        const parts = getComputedStyle(element)[property].match(/-?[0-9.]+(e-?[0-9]+)?/g) ?? []
+        parts.forEach((part, i) => (out[`${key}.${i}`] = Number(part)))
+      }
+      css('page.background', 'body', 'backgroundColor')
+      css('page.text', '.title', 'color')
+      css('page.pill', '.hint', 'backgroundColor')
+      css('page.toggle', '.time-toggle', 'color')
+      return out
     },
     settle(frames = 200) {
       const { controls } = rigRef.current
@@ -419,6 +583,8 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
       const u = (material.userData as { uniforms?: SteamUniforms }).uniforms
       if (!u) return null
       return {
+        uTint: u.uTint.value.getHexString(),
+        uTintOpacity: u.uTintOpacity.value,
         uDensity: u.uDensity.value,
         uHeight: u.uHeight.value,
         uPointerBlend: u.uPointerBlend.value,
@@ -436,7 +602,8 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
 
 /**
  * Dev-only verification hooks (loaded lazily under import.meta.env.DEV, absent from production):
- * `?cam=<preset>`, `window.__nook`, and `data-nook-ready` on the document element.
+ * `?cam=<preset>`, `window.__nook`, and `data-nook-ready` on the document element. (`?time=evening` is read by the
+ * store, `?shadow=` by `getShadowMode`.)
  */
 export default function DevHooks() {
   const scene = useThree((s) => s.scene)

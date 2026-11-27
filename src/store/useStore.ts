@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { KETTLE_STEAM_LOOK, STEAM_LOOK_DEFAULTS, TEAS, type SteamLook } from '../config/look.ts'
+import type { TimeOfDay } from '../lib/timeOfDay.ts'
 
 /** The two steam columns. Both use the same material class with different looks. */
 export type SteamSlot = 'tea' | 'kettle'
@@ -8,6 +9,14 @@ export interface PointerPoint {
   x: number
   y: number
   z: number
+}
+
+/** The app starts in the morning. Dev only: `?time=evening` selects the evening on load (no transition). */
+function initialTimeOfDay(): TimeOfDay {
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    if (new URLSearchParams(window.location.search).get('time') === 'evening') return 'evening'
+  }
+  return 'morning'
 }
 
 interface StoreState {
@@ -27,6 +36,9 @@ interface StoreState {
   nextTea: () => void
   /** Selects tea `index` (ignored when out of range). */
   setTea: (index: number) => void
+  /** Selected time of day. `TimeOfDay` (scene) damps the look towards it, reading it in useFrame via getState(). */
+  timeOfDay: TimeOfDay
+  toggleTimeOfDay: () => void
   setPointer: (slot: SteamSlot, x: number, y: number, z: number) => void
   setPointerActive: (active: boolean) => void
   setSteamLook: (slot: SteamSlot, look: SteamLook) => void
@@ -45,6 +57,8 @@ export const useStore = create<StoreState>()((set, get) => ({
   setTea: (index) => {
     if (Number.isInteger(index) && index >= 0 && index < TEAS.length && index !== get().teaIndex) set({ teaIndex: index })
   },
+  timeOfDay: initialTimeOfDay(),
+  toggleTimeOfDay: () => set((s) => ({ timeOfDay: s.timeOfDay === 'morning' ? 'evening' : 'morning' })),
   setPointer: (slot, x, y, z) => {
     const p = get().pointers[slot]
     p.x = x

@@ -23,3 +23,13 @@ describe('tea selection', () => {
     expect(useStore.getState().teaIndex).toBe(2)
   })
 })
+
+describe('time of day', () => {
+  it('starts in the morning and toggles back and forth', () => {
+    expect(useStore.getState().timeOfDay).toBe('morning')
+    useStore.getState().toggleTimeOfDay()
+    expect(useStore.getState().timeOfDay).toBe('evening')
+    useStore.getState().toggleTimeOfDay()
+    expect(useStore.getState().timeOfDay).toBe('morning')
+  })
+})

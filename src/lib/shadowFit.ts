@@ -13,22 +13,7 @@ export interface ShadowFrustum {
 /** Smallest `near` the fit returns (three's shadow camera needs a positive value). */
 const MIN_NEAR = 0.01
 
-function sub(a: Point3, b: Point3): [number, number, number] {
-  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
-}
-
-function cross(a: Point3, b: Point3): [number, number, number] {
-  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
-}
-
-function dot(a: Point3, b: Point3): number {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-}
-
-function normalize(a: Point3): [number, number, number] {
-  const length = Math.hypot(a[0], a[1], a[2])
-  return [a[0] / length, a[1] / length, a[2] / length]
-}
+const ORIGIN: Point3 = [0, 0, 0]
 
 /** The 8 corners of an axis-aligned box. */
 export function boxCorners(min: Point3, max: Point3): Point3[] {
@@ -45,35 +30,59 @@ export function boxCorners(min: Point3, max: Point3): Point3[] {
  * meters on every side (room for the PCF blur and the normal bias). `near` and `far` are distances from the light
  * along its view direction. Does not work for a light straight above the target (view direction parallel to +Y), where
  * three picks the camera roll arbitrarily: keep the sun below about 89 degrees elevation.
+ *
+ * The result is written into `out`. With a reused `out` the function allocates nothing, so it can run every frame while
+ * the sun moves (time-of-day transition); that is why the vector maths is written out in scalars.
  */
-export function fitShadowFrustum(sunPosition: Point3, points: readonly Point3[], margin: number, target: Point3 = [0, 0, 0]): ShadowFrustum {
-  const forward = normalize(sub(target, sunPosition))
-  const right = normalize(cross(forward, [0, 1, 0]))
-  const up = cross(right, forward)
+export function fitShadowFrustum(
+  sunPosition: Point3,
+  points: readonly Point3[],
+  margin: number,
+  target: Point3 = ORIGIN,
+  out: ShadowFrustum = { left: 0, right: 0, bottom: 0, top: 0, near: 0, far: 0 },
+): ShadowFrustum {
+  // forward = normalize(target - sun)
+  let fx = target[0] - sunPosition[0]
+  let fy = target[1] - sunPosition[1]
+  let fz = target[2] - sunPosition[2]
+  const fl = Math.hypot(fx, fy, fz)
+  fx /= fl
+  fy /= fl
+  fz /= fl
+  // right = normalize(forward x (0, 1, 0)) = normalize(-fz, 0, fx)
+  const rl = Math.hypot(fz, fx)
+  const rx = -fz / rl
+  const rz = fx / rl
+  // up = right x forward (right has no y component)
+  const ux = -rz * fy
+  const uy = rz * fx - rx * fz
+  const uz = rx * fy
   let left = Infinity
-  let rightEdge = -Infinity
+  let right = -Infinity
   let bottom = Infinity
   let top = -Infinity
   let near = Infinity
   let far = -Infinity
-  for (const point of points) {
-    const d = sub(point, sunPosition)
-    const x = dot(d, right)
-    const y = dot(d, up)
-    const depth = dot(d, forward)
+  for (let i = 0; i < points.length; i += 1) {
+    const point = points[i] as Point3
+    const dx = point[0] - sunPosition[0]
+    const dy = point[1] - sunPosition[1]
+    const dz = point[2] - sunPosition[2]
+    const x = dx * rx + dz * rz
+    const y = dx * ux + dy * uy + dz * uz
+    const depth = dx * fx + dy * fy + dz * fz
     left = Math.min(left, x)
-    rightEdge = Math.max(rightEdge, x)
+    right = Math.max(right, x)
     bottom = Math.min(bottom, y)
     top = Math.max(top, y)
     near = Math.min(near, depth)
     far = Math.max(far, depth)
   }
-  return {
-    left: left - margin,
-    right: rightEdge + margin,
-    bottom: bottom - margin,
-    top: top + margin,
-    near: Math.max(MIN_NEAR, near - margin),
-    far: far + margin,
-  }
+  out.left = left - margin
+  out.right = right + margin
+  out.bottom = bottom - margin
+  out.top = top + margin
+  out.near = Math.max(MIN_NEAR, near - margin)
+  out.far = far + margin
+  return out
 }

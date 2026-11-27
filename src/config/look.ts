@@ -1,6 +1,7 @@
 // Every tweakable look value lives here (or in a file re-exported below). Components read from this module, never inline.
 // Colors are sRGB hex. Palette keys are the contract material names (SPEC section 5).
 
+import { sunPositionFromAngles } from '../lib/sunAngles.ts'
 import { TEAS } from '../lib/teas.ts'
 
 export { TEAS, type Tea } from '../lib/teas.ts'
@@ -37,7 +38,8 @@ export const PALETTE = {
   Mat_Bag1: teaColor(1),
   Mat_Bag2: teaColor(2),
   Mat_Bag3: teaColor(3),
-  // Phase 4 (SPEC section 5 amendment of 2026-11-27): the pendant lamp shade, a warm parchment. Its glow is added at runtime (slice 4.2).
+  // Phase 4 (SPEC section 5 amendment of 2026-11-27): the pendant lamp shade, a warm parchment. Its glow is added at runtime
+  // (`lampGlow` of the light presets below).
   Mat_Lamp: '#E8C48A',
 } as const
 
@@ -45,10 +47,27 @@ export type MaterialName = keyof typeof PALETTE
 
 export type Vec3 = readonly [number, number, number]
 
+/** Canvas and page background, behind the diorama, in the morning (the evening one is in `LIGHT_PRESETS`). */
+export const BACKGROUND_COLOR = '#E9DFCB'
+
+/**
+ * HTML overlay look (system font stack, no web fonts) in the morning. The values live in `src/index.css` as CSS variables;
+ * this object (and `LIGHT_PRESETS.evening` for the evening) is the reference that `src/ui/ui.test.ts` compares them with.
+ * Text colour is a dark warm brown; the hint, tea name and time toggle sit on a translucent cream pill because the floor
+ * edge behind them is dark. `src/ui/ui.test.ts` checks the contrast.
+ */
+export const UI = {
+  fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+  text: '#3A2D22',
+  pill: 'rgba(233, 223, 203, 0.86)',
+}
+
+/** Everything that depends on the time of day. `src/lib/timeOfDay.ts` blends two of these. */
 export interface LightPreset {
   /** Directional sun. */
   sunColor: string
   sunIntensity: number
+  /** World position; only its direction matters for the light, the distance places the shadow camera. */
   sunPosition: Vec3
   /** Hemisphere fill: sky color above, ground color below. */
   fillSkyColor: string
@@ -61,38 +80,118 @@ export interface LightPreset {
   frontFillColor: string
   frontFillIntensity: number
   frontFillPosition: Vec3
+  /** The pendant lamp: one point light without a shadow at the `Lamp_Light` marker (intensity in candela, 0 = off). */
+  lampColor: string
+  lampIntensity: number
+  /** Self-light of the lamp shade (`Mat_Lamp` emissive colour and intensity): the point light cannot light its outside. */
+  lampGlowColor: string
+  lampGlow: number
+  /** The "outside" card behind the window (`Mat_Sky`): its colour, and how much it shines by itself (0 = only lit). */
+  skyColor: string
+  skyGlow: number
+  /**
+   * Self-light of the four tea colours (`Mat_Bag0..3`: tea bags and jar contents), a share of their own colour. Keeps
+   * the packets apart in dim warm light, where green and chamomile would otherwise look alike. 0 = off.
+   */
+  bagGlow: number
+  /** Multiplies the steam colour (of the selected tea, and of the kettle) and its opacity. White and 1 = unchanged. */
+  steamTint: string
+  steamOpacity: number
+  /** Page and canvas background behind the diorama. */
+  pageBackground: string
+  /** Overlay text and the translucent pill behind it (CSS only, mirrored in `src/index.css`). */
+  uiText: string
+  uiPill: string
 }
 
-/** Light presets from SPEC section 3 (`morning` is applied in slice 1.4; `evening` is unused until 4.3). */
+const MORNING_SUN_POSITION: Vec3 = [
+  // Azimuth -91 degrees, elevation about 42 (D-072): from the left, along the window wall's normal. At -58 (F5) the
+  // light looked as if it came through the front wall. Before F5 z was -0.45 (behind the diorama).
+  -1.123, 1.0, -0.02,
+]
+
+/**
+ * Evening sun (slice 4.0, D-141): azimuth -75, elevation 22 degrees (`altitude`, see `SunAngles`): through the window,
+ * low and a little from the front; same distance as the morning sun.
+ */
+export const EVENING_SUN_ANGLES = { azimuth: -75, altitude: 22 } as const
+
+/**
+ * The two time-of-day presets (SPEC section 3). The app starts in `morning`; the toggle blends towards the other one.
+ * In dev the Leva `Light` folder edits the active preset (not persisted: copy good values here).
+ */
 export const LIGHT_PRESETS = {
   morning: {
     sunColor: '#FFF1D6',
     sunIntensity: 4.8,
-    // Azimuth -91 degrees, elevation about 42 (D-072): from the left, along the window wall's normal. At -58 (F5) the
-    // light looked as if it came through the front wall. Before F5 z was -0.45 (behind the diorama).
-    sunPosition: [-1.123, 1.0, -0.02],
+    sunPosition: MORNING_SUN_POSITION,
     fillSkyColor: '#BFD8F0',
     fillGroundColor: '#F2E6D0',
     fillIntensity: 3.6,
     frontFillColor: '#FFF4E0',
     frontFillIntensity: 1.8,
     frontFillPosition: [-0.6, 0.8, 1.2],
+    // The lamp is off by day. It stays in the scene (a light added later would recompile every shader).
+    lampColor: '#FFB35C',
+    lampIntensity: 0,
+    lampGlowColor: '#FFB35C',
+    lampGlow: 0,
+    skyColor: PALETTE.Mat_Sky,
+    skyGlow: 0,
+    bagGlow: 0,
+    steamTint: '#FFFFFF',
+    steamOpacity: 1,
+    pageBackground: BACKGROUND_COLOR,
+    uiText: UI.text,
+    uiPill: UI.pill,
   },
+  // Colours of slice 4.0 (D-141, D-142, D-144); intensities, ground, front fill, glows and tint tuned against the render in
+  // slice 4.2: amber sun and lamp, deep blue shadows from the sky half of the fill, the camera sides lifted enough to
+  // keep the kettle, the mug and the four tea colours readable.
   evening: {
     sunColor: '#FF9A57',
-    sunIntensity: 1.5,
-    sunPosition: [0.8, 0.25, 0.3],
+    sunIntensity: 4,
+    sunPosition: sunPositionFromAngles(EVENING_SUN_ANGLES, Math.hypot(...MORNING_SUN_POSITION)),
     fillSkyColor: '#3C4E7A',
-    fillGroundColor: '#2A2A3C',
-    fillIntensity: 0.5,
-    // Off for now: phase 4 designs the evening lighting (a lamp is planned there), so the front fill stays out of it.
-    frontFillColor: '#FFF4E0',
-    frontFillIntensity: 0,
+    fillGroundColor: '#4A3644',
+    fillIntensity: 3.4,
+    frontFillColor: '#FFE4D2',
+    frontFillIntensity: 1.2,
     frontFillPosition: [-0.6, 0.8, 1.2],
+    lampColor: '#FFB35C',
+    lampIntensity: 0.24,
+    lampGlowColor: '#FFB35C',
+    lampGlow: 0.55,
+    skyColor: '#E8946A',
+    skyGlow: 1,
+    bagGlow: 0.45,
+    steamTint: '#FFD3AC',
+    steamOpacity: 1,
+    pageBackground: '#3A3350',
+    uiText: '#F2E6D0',
+    uiPill: 'rgba(58, 51, 80, 0.86)',
   },
 } as const satisfies Record<string, LightPreset>
 
 export type LightPresetName = keyof typeof LIGHT_PRESETS
+
+/**
+ * How the time of day changes. One blend factor (0 = morning, 1 = evening) is damped towards the selected preset with
+ * `MathUtils.damp` (`damping` 4: 98 % after 1 s, snapped to the target at about 1.7 s). `maxDelta` caps the time step so
+ * a long frame cannot make the look jump, `snap` is the remaining distance at which the blend is set to the target.
+ * The overlay text does not follow the blend linearly: dark text on a darkening page would be unreadable for a long
+ * moment, so it switches along a steeper curve, a smoothstep of width `textSwitchWidth` around `textSwitchCentre` (the
+ * blend where the morning and the evening text colour read equally well on the blended page). `cssSteps` is the
+ * resolution of the CSS variables the page colours are driven by.
+ */
+export const TIME_OF_DAY = {
+  damping: 4,
+  maxDelta: 0.05,
+  snap: 0.001,
+  textSwitchCentre: 0.58,
+  textSwitchWidth: 0.3,
+  cssSteps: 1000,
+} as const
 
 /** Camera pose as spherical offsets from the `Orbit_Target` marker (angles in degrees, distance in meters). */
 export interface CameraPose {
@@ -148,20 +247,6 @@ export const SHADOW = {
 export const TONE = {
   mapping: 'neutral' as 'neutral' | 'aces' | 'none',
   exposure: 1,
-}
-
-/** Canvas and page background, behind the diorama. */
-export const BACKGROUND_COLOR = '#E9DFCB'
-
-/**
- * HTML overlay look (system font stack, no web fonts). The values live in `src/index.css` as CSS variables; this
- * object is the reference that `src/ui/ui.test.ts` compares them with. Text colour is a dark warm brown; the hint and tea name sit on
- * a translucent cream pill because the floor edge behind them is dark. `src/ui/ui.test.ts` checks the contrast.
- */
-export const UI = {
-  fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-  text: '#3A2D22',
-  pill: 'rgba(233, 223, 203, 0.86)',
 }
 
 export const CAMERA = {

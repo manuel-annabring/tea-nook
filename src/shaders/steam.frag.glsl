@@ -1,5 +1,8 @@
 uniform vec3 uColor;
 uniform float uDensity;
+// Time of day: multiplies colour and opacity, on top of whatever the tea (or the kettle look) set.
+uniform vec3 uTint;
+uniform float uTintOpacity;
 uniform float uPhase;
 uniform float uFadeIn;
 uniform float uFadeOut;
@@ -28,7 +31,7 @@ void main() {
   // Soft left and right edges of the plane.
   alpha *= smoothstep(0.0, 0.2, vUv.x) * smoothstep(1.0, 0.8, vUv.x);
 
-  gl_FragColor = vec4(uColor, alpha * uDensity);
+  gl_FragColor = vec4(uColor * uTint, alpha * uDensity * uTintOpacity);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }

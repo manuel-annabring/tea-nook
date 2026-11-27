@@ -9,6 +9,7 @@ import { ReadySignal } from '../ui/ReadySignal.tsx'
 import { poseToPosition } from './framing.ts'
 import { Lights } from './Lights.tsx'
 import { getShadowMode } from './shadowMode.ts'
+import { TimeOfDay } from './TimeOfDay.tsx'
 
 // Dev-only verification hooks and panel visibility (see CLAUDE.md Commands).
 const DevHooks = import.meta.env.DEV ? lazy(() => import('../dev/DevHooks.tsx')) : null
@@ -38,6 +39,7 @@ export default function Scene() {
       <Canvas dpr={[1, 2]} shadows={shadows} gl={glProps} camera={{ position: initialPosition, fov: CAMERA.fov, near: CAMERA.near, far: CAMERA.far }}>
         <color attach="background" args={[BACKGROUND_COLOR]} />
         <Lights />
+        <TimeOfDay />
         <Suspense fallback={null}>
           <Nook />
           <ReadySignal />

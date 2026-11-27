@@ -27,6 +27,9 @@ export interface SteamUniforms {
   uPhase: IUniform<number>
   uColor: IUniform<Color>
   uDensity: IUniform<number>
+  /** Time-of-day multipliers on colour and opacity (white and 1 = unchanged), see `applySteamTint`. */
+  uTint: IUniform<Color>
+  uTintOpacity: IUniform<number>
   uHeight: IUniform<number>
   uNoise: IUniform<DataTexture>
   uNoiseScale: IUniform<Vector2>
@@ -83,6 +86,8 @@ export function createSteamMaterial(noise: DataTexture): SteamMaterial {
     uPhase: { value: 0 },
     uColor: { value: new Color() },
     uDensity: { value: 1 },
+    uTint: { value: new Color(1, 1, 1) },
+    uTintOpacity: { value: 1 },
     uHeight: { value: 0.25 },
     uNoise: { value: noise },
     uNoiseScale: { value: new Vector2(1, 0.8) },
@@ -138,6 +143,15 @@ export function applyLook(material: SteamMaterial, look: SteamLook, withAppearan
   u.uPointerStrength.value = shape.pointerStrength
   u.uPointerPower.value = shape.pointerPower
   u.uPointerAnchor.value = shape.pointerAnchor
+}
+
+/**
+ * Copies the time-of-day tint into the existing uniform objects (per frame). It is a separate factor, so the colour and
+ * density the tea selection damps (`dampAppearance`) stay as they are.
+ */
+export function applySteamTint(material: SteamMaterial, tint: Color, opacity: number): void {
+  material.uniforms.uTint.value.copy(tint)
+  material.uniforms.uTintOpacity.value = opacity
 }
 
 const POINTER_DAMPING = 8

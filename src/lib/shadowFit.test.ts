@@ -42,10 +42,16 @@ describe('fitShadowFrustum', () => {
     expect(fitShadowFrustum([0, 0.5, 0.1], BOX, 0.01).near).toBeGreaterThan(0)
   })
 
+  it('writes into a reused result object', () => {
+    const out = { left: 0, right: 0, bottom: 0, top: 0, near: 0, far: 0 }
+    expect(fitShadowFrustum([-1, 1, 0.3], BOX, 0.01, [0, 0, 0], out)).toBe(out)
+    expect(out).toEqual(fitShadowFrustum([-1, 1, 0.3], BOX, 0.01))
+  })
+
   it('contains all 8 corners for random sun directions, and the volume is tight', () => {
     const next = rng(42)
     for (let i = 0; i < 200; i += 1) {
-      const position = sunPositionFromAngles({ azimuth: -180 + next() * 360, elevation: 5 + next() * 80 }, 1.5 + next() * 2)
+      const position = sunPositionFromAngles({ azimuth: -180 + next() * 360, altitude: 5 + next() * 80 }, 1.5 + next() * 2)
       const margin = 0.01
       const f = fitShadowFrustum(position, BOX, margin)
       // Re-project independently with three's lookAt convention and check every corner is inside.
@@ -80,7 +86,7 @@ describe('fitShadowFrustum', () => {
 
 describe('sun angles', () => {
   it('points the sun to the front-left for negative azimuth and positive z', () => {
-    const [x, y, z] = sunPositionFromAngles({ azimuth: -60, elevation: 40 }, 1)
+    const [x, y, z] = sunPositionFromAngles({ azimuth: -60, altitude: 40 }, 1)
     expect(x).toBeLessThan(0)
     expect(y).toBeGreaterThan(0)
     expect(z).toBeGreaterThan(0)
@@ -89,13 +95,13 @@ describe('sun angles', () => {
   it('keeps the distance and round-trips through the angles', () => {
     const next = rng(7)
     for (let i = 0; i < 50; i += 1) {
-      const angles = { azimuth: -179 + next() * 358, elevation: next() * 89 }
+      const angles = { azimuth: -179 + next() * 358, altitude: next() * 89 }
       const distance = 0.5 + next() * 3
       const position = sunPositionFromAngles(angles, distance)
       expect(Math.hypot(...position)).toBeCloseTo(distance)
       const back = sunAnglesFromPosition(position)
       expect(back.azimuth).toBeCloseTo(angles.azimuth)
-      expect(back.elevation).toBeCloseTo(angles.elevation)
+      expect(back.altitude).toBeCloseTo(angles.altitude)
     }
   })
 })

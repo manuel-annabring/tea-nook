@@ -3,10 +3,12 @@ import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import type { Mesh, Object3D } from 'three'
 import { Color } from 'three'
 import { TEAS } from '../config/look.ts'
+import { timeLive } from '../scene/timeOfDayLive.ts'
 import { useStore, type SteamSlot } from '../store/useStore.ts'
 import { createSteamGeometry } from './steamGeometry.ts'
 import {
   applyLook,
+  applySteamTint,
   createNoiseTexture,
   createSteamMaterial,
   dampAppearance,
@@ -22,13 +24,22 @@ interface SteamProps {
   anchor: RefObject<Object3D | null>
 }
 
-function setTeaTarget(target: AppearanceTarget & { index: number }, index: number): void {
+/** What the tea steam is heading for, plus the colour string it was parsed from. */
+type TeaTarget = AppearanceTarget & { hex: string }
+
+/**
+ * Follows the selected tea. Compares values, not just the selection, so an edit of the selected tea in the dev panel
+ * arrives too; the colour string is only parsed when it changes (nothing is allocated otherwise).
+ */
+function setTeaTarget(target: TeaTarget, index: number): void {
   const tea = TEAS[index]
   if (!tea) throw new Error(`TEAS has no entry ${index}`)
-  target.color.set(tea.steamColor)
+  if (target.hex !== tea.steamColor) {
+    target.hex = tea.steamColor
+    target.color.set(tea.steamColor)
+  }
   target.density = tea.density
   target.speed = tea.speed
-  target.index = index
 }
 
 /**
@@ -48,7 +59,7 @@ export function Steam({ slot, anchor }: SteamProps) {
   const geometry = useMemo(() => createSteamGeometry(look.radius), [look.radius])
   // Rise speed (damped for the tea steam, copied from the look for the kettle).
   const appearance = useRef<AppearanceState>({ speed: look.speed, ready: slot !== 'tea' })
-  const teaTarget = useRef<AppearanceTarget & { index: number }>({ color: new Color(), density: 0, speed: 0, index: -1 })
+  const teaTarget = useRef<TeaTarget>({ color: new Color(), density: 0, speed: 0, hex: '' })
   // Reused every frame so nothing is allocated in useFrame.
   const pointer = useRef<PointerTarget>({ x: 0, y: 0, z: 0, active: false })
 
@@ -70,11 +81,12 @@ export function Steam({ slot, anchor }: SteamProps) {
     target.z = p.z
     target.active = s.pointerActive
     if (slot === 'tea') {
-      // The tea steam follows the selected tea; the target is rebuilt only when the index changes (no per-frame parsing).
+      // The tea steam follows the selected tea.
       const t = teaTarget.current
-      if (t.index !== s.teaIndex) setTeaTarget(t, s.teaIndex)
+      setTeaTarget(t, s.teaIndex)
       dampAppearance(material, appearance.current, t, delta)
     }
+    applySteamTint(material, timeLive.values.steamTint, timeLive.values.steamOpacity)
     tickSteam(material, delta, appearance.current.speed, target)
     // The steam mesh lives at the scene root, so the marker's world position is also its local position.
     if (mesh.current && anchor.current) anchor.current.getWorldPosition(mesh.current.position)

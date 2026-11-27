@@ -54,10 +54,28 @@ function Hint() {
   )
 }
 
+/**
+ * Morning / evening switch, top-right. A real button with `aria-pressed` (pressed = evening) and a constant label, so a
+ * screen reader reads "Evening, toggle button, pressed". Space and Enter work as on any button. Shown once the scene is
+ * ready, so it cannot be hit under the loader. It only dispatches the store action; `TimeOfDay` does the transition.
+ */
+function TimeToggle() {
+  const ready = useStore((s) => s.sceneReady)
+  const evening = useStore((s) => s.timeOfDay === 'evening')
+  if (!ready) return null
+  return (
+    <button type="button" className="pill time-toggle" aria-pressed={evening} onClick={() => useStore.getState().toggleTimeOfDay()}>
+      <span className="time-switch" aria-hidden="true" />
+      Evening
+    </button>
+  )
+}
+
 export function Overlay() {
   return (
     <div className="overlay">
       <h1 className="title">Tea Nook</h1>
+      <TimeToggle />
       <TeaName />
       <Hint />
       <Loader />
