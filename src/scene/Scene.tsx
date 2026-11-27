@@ -16,6 +16,7 @@ const DevHooks = import.meta.env.DEV ? lazy(() => import('../dev/DevHooks.tsx'))
 const DevPanel = import.meta.env.DEV ? lazy(() => import('../dev/DevPanel.tsx')) : null
 const DevSteam = import.meta.env.DEV ? lazy(() => import('../dev/DevSteam.tsx')) : null
 const DevLights = import.meta.env.DEV ? lazy(() => import('../dev/DevLights.tsx')) : null
+const DevRays = import.meta.env.DEV ? lazy(() => import('../dev/DevRays.tsx')) : null
 
 const { limits } = CAMERA
 const { degToRad } = MathUtils
@@ -53,6 +54,11 @@ export default function Scene() {
         {DevLights ? (
           <Suspense fallback={null}>
             <DevLights />
+          </Suspense>
+        ) : null}
+        {DevRays ? (
+          <Suspense fallback={null}>
+            <DevRays />
           </Suspense>
         ) : null}
         {DevHooks ? (

@@ -20,7 +20,7 @@ export interface TimeValues {
   sunAzimuth: number
   sunAltitude: number
   sunDistance: number
-  /** Derived from the three values above; the direction to the world origin is also the ray direction (slice 4.3). */
+  /** Derived from the three values above; the direction from it to the world origin is the ray direction (`beamDirectionInto`). */
   sunPosition: Vector3
   sunColor: Color
   sunIntensity: number
@@ -39,6 +39,8 @@ export interface TimeValues {
   bagGlow: number
   steamTint: Color
   steamOpacity: number
+  /** Opacity of the window light rays (`Rays`). */
+  rayStrength: number
   /** sRGB components 0..1 (x = red, y = green, z = blue). */
   pageBackground: Vector3
 }
@@ -66,6 +68,7 @@ export function createTimeValues(): TimeValues {
     bagGlow: 0,
     steamTint: new Color(),
     steamOpacity: 1,
+    rayStrength: 0,
     pageBackground: new Vector3(),
   }
 }
@@ -90,6 +93,7 @@ export interface TimePatch {
   bagGlow: number
   steamTint: string
   steamOpacity: number
+  rayStrength: number
 }
 
 /** Applies the given fields to a compiled preset (on demand, not per frame). */
@@ -108,6 +112,7 @@ export function patchTimeValues(values: TimeValues, patch: Partial<TimePatch>): 
   values.skyGlow = num(patch.skyGlow, values.skyGlow)
   values.bagGlow = num(patch.bagGlow, values.bagGlow)
   values.steamOpacity = num(patch.steamOpacity, values.steamOpacity)
+  values.rayStrength = num(patch.rayStrength, values.rayStrength)
   color(patch.sunColor, values.sunColor)
   color(patch.hemisphereSkyColor, values.fillSkyColor)
   color(patch.hemisphereGroundColor, values.fillGroundColor)
@@ -141,6 +146,7 @@ export function readTimeValues(values: TimeValues): TimePatch {
     bagGlow: values.bagGlow,
     steamTint: hex(values.steamTint),
     steamOpacity: values.steamOpacity,
+    rayStrength: values.rayStrength,
   }
 }
 
@@ -173,6 +179,7 @@ export function compileTimePreset(preset: LightPreset): TimeValues {
     bagGlow: preset.bagGlow,
     steamTint: preset.steamTint,
     steamOpacity: preset.steamOpacity,
+    rayStrength: preset.rayStrength,
   })
   return values
 }
@@ -211,6 +218,7 @@ export function blendTimeValues(from: TimeValues, to: TimeValues, t: number, out
   out.bagGlow = lerp(from.bagGlow, to.bagGlow, t)
   out.steamTint.lerpColors(from.steamTint, to.steamTint, t)
   out.steamOpacity = lerp(from.steamOpacity, to.steamOpacity, t)
+  out.rayStrength = lerp(from.rayStrength, to.rayStrength, t)
   out.pageBackground.lerpVectors(from.pageBackground, to.pageBackground, t)
   return out
 }

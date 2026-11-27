@@ -64,6 +64,7 @@ function useLightFolder() {
     bagGlow: number('bagGlow', 'tea colour glow', 0, 1, 0.01),
     steamTint: color('steamTint', 'steam tint'),
     steamOpacity: number('steamOpacity', 'steam opacity', 0, 2, 0.01),
+    rayStrength: number('rayStrength', 'ray strength', 0, 1, 0.005),
   }))
 
   useEffect(() => {

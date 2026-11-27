@@ -97,6 +97,11 @@ export interface LightPreset {
   /** Multiplies the steam colour (of the selected tea, and of the kettle) and its opacity. White and 1 = unchanged. */
   steamTint: string
   steamOpacity: number
+  /**
+   * Opacity of the window light rays where all their planes overlap (added light in the sun colour, `RAYS` below holds
+   * the shape). 0 = off.
+   */
+  rayStrength: number
   /** Page and canvas background behind the diorama. */
   pageBackground: string
   /** Overlay text and the translucent pill behind it (CSS only, mirrored in `src/index.css`). */
@@ -141,6 +146,7 @@ export const LIGHT_PRESETS = {
     bagGlow: 0,
     steamTint: '#FFFFFF',
     steamOpacity: 1,
+    rayStrength: 0.4,
     pageBackground: BACKGROUND_COLOR,
     uiText: UI.text,
     uiPill: UI.pill,
@@ -167,6 +173,7 @@ export const LIGHT_PRESETS = {
     bagGlow: 0.45,
     steamTint: '#FFD3AC',
     steamOpacity: 1,
+    rayStrength: 0.38,
     pageBackground: '#3A3350',
     uiText: '#F2E6D0',
     uiPill: 'rgba(58, 51, 80, 0.86)',
@@ -191,6 +198,46 @@ export const TIME_OF_DAY = {
   textSwitchCentre: 0.58,
   textSwitchWidth: 0.3,
   cssSteps: 1000,
+} as const
+
+/**
+ * Shape of the light rays from the window (slice 4.3): `planes` upright sheets across the width of the window, each
+ * running from the lit part of the glass along the live sun direction until it meets worktop, back wall or floor. Their
+ * strength and colour come from the time of day (`rayStrength` and the sun colour of `LIGHT_PRESETS`). Lengths are in
+ * meters, `crossSoftness` is a share of the beam height, noise scales are tiles of the noise texture. In dev the Leva
+ * `Rays` folder edits these live (not persisted).
+ */
+export const RAYS = {
+  planes: 10,
+  /** The outer sheets are this much weaker than the middle ones (soft sides of the beam). */
+  sideDim: 0.4,
+  /** Soft top and bottom of the beam. */
+  crossSoftness: 0.28,
+  /** Fade in from the glass. */
+  fadeIn: 0.07,
+  /** Fade out towards the surface the ray ends on. */
+  endFade: 0.09,
+  /** Soft border of those surfaces, so rays that just miss an edge do not differ by a hard step. */
+  edgeMargin: 0.04,
+  /** Long rays (the low evening sun passes the worktop) dissolve between these distances from the glass. */
+  reachStart: 0.5,
+  reachEnd: 0.95,
+  /** The rays fade out when the sun direction's x (towards the room) drops from the second value to the first. */
+  visibleFrom: [0.15, 0.4],
+  noise: { seed: 71, cells: 4, octaves: 3 },
+  /** Streaks: tiles across the height of the beam, shift from one side to the other, tiles per meter along the beam. */
+  noiseAcross: 2.2,
+  noiseSide: 0.5,
+  noiseAlong: 0.35,
+  /** How fast the streaks wander (noise tiles per second). */
+  drift: 0.012,
+  /** Noise values mapped to dark and bright streaks, and the share of light left between them. */
+  cutLow: 0.36,
+  cutHigh: 0.66,
+  base: 0.3,
+  /** The shadow of the horizontal cross bar: share of light removed and softness of its edges. */
+  mullionDim: 0.6,
+  mullionSoftness: 0.012,
 } as const
 
 /** Camera pose as spherical offsets from the `Orbit_Target` marker (angles in degrees, distance in meters). */

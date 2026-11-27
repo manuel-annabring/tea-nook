@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef } from 'react'
 import { TextureLoader, type Group, type Object3D } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { AO, CAMERA } from '../config/look.ts'
+import type { BeamWindow } from '../lib/beam.ts'
 import { TeaBagHits } from '../input/TeaInput.tsx'
 import { useTeaHoverCursor } from '../input/useHoverCursor.ts'
 import { useMugHandlers } from '../input/useMugHandlers.ts'
@@ -13,6 +14,8 @@ import { Model } from './NookModel.generated.tsx'
 import { applyPalette } from './palette.ts'
 import { applyShadowFlags } from './shadows.ts'
 import { applyRoomAo, configureAoTexture, detachRoomAo, ROOM_AO_URL } from './roomAo.ts'
+import { readBeamWindow } from './beamWindow.ts'
+import { Rays } from './Rays.tsx'
 import { Steam } from './Steam.tsx'
 import { useStore } from '../store/useStore.ts'
 import { createTeaRig, resetTeaRig, tickTeaSelection, type TeaRig } from './teaSelection.ts'
@@ -21,7 +24,7 @@ import { applyNookTime, createNookTimeRig, resetNookTimeRig, type NookTimeRig } 
 /**
  * The diorama: the generated model plus behaviour. On mount it checks the model contract (dev only, throws with the
  * missing names), applies the palette and the baked AO texture, frames the camera on the `Orbit_Target` marker once the controls exist, and
- * attaches the two steams to the `Steam_Tea` and `Steam_Kettle` markers, and handles the tea selection (click on the mug
+ * attaches the two steams to the `Steam_Tea` and `Steam_Kettle` markers, adds the light rays of the window, and handles the tea selection (click on the mug
  * or a bag; the lifted bag and the tea surface colour follow the store's `teaIndex`). The sky card, the glow of the
  * lamp shade and a little self-light on the tea colours follow the time of day (`timeLive`).
  */
@@ -29,6 +32,7 @@ export function Nook() {
   const root = useRef<Group>(null)
   const teaMarker = useRef<Object3D>(null)
   const kettleMarker = useRef<Object3D>(null)
+  const beamWindow = useRef<BeamWindow>(null)
   const camera = useThree((s) => s.camera)
   const scene = useThree((s) => s.scene)
   const controls = useThree((s) => s.controls) as OrbitControls | null
@@ -53,6 +57,7 @@ export function Nook() {
       if (!marker) throw new Error(`${name} is missing from the model (SPEC.md section 5)`)
       ref.current = marker
     }
+    beamWindow.current = readBeamWindow(root.current)
   }, [])
 
   // Bags, their hit boxes and the tea surface material, for the per-frame tea selection (`tickTeaSelection`).
@@ -110,6 +115,7 @@ export function Nook() {
       <TeaBagHits />
       <Steam slot="tea" anchor={teaMarker} />
       <Steam slot="kettle" anchor={kettleMarker} />
+      <Rays window={beamWindow} />
     </>
   )
 }
