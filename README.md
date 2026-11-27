@@ -40,7 +40,7 @@ three, @react-three/fiber, @react-three/drei, React 19, TypeScript (strict), Vit
 
 ## Controls
 
-- Drag to orbit, scroll or pinch to zoom. Orbit and zoom are limited, and there is no panning.
+- Drag to orbit, scroll to zoom. Orbit and zoom are limited, and there is no panning.
 - Click the mug to change to the next tea, or click a tea bag in the box to pick that tea.
 - Use the "Evening" switch at the top right to change between morning and evening (mouse or keyboard).
 - Move the pointer over the scene and the steam leans away from it.

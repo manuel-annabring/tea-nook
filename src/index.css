@@ -18,6 +18,24 @@
   --ui-font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/*
+ * Browsers without color-mix (Chrome < 111, Safari < 16.2, Firefox < 113): no blend. The page switches in one step at
+ * the middle of the text curve, driven by the data-tod attribute that src/scene/pageTheme.ts sets.
+ */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  :root {
+    --nook-bg: var(--morning-bg);
+    --ui-text: var(--morning-text);
+    --ui-pill: var(--morning-pill);
+  }
+
+  :root[data-tod='evening'] {
+    --nook-bg: var(--evening-bg);
+    --ui-text: var(--evening-text);
+    --ui-pill: var(--evening-pill);
+  }
+}
+
 html,
 body,
 #root {

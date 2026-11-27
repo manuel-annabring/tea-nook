@@ -1,5 +1,6 @@
 // The page side of the time of day. `src/index.css` holds the morning and evening colours and mixes them with
-// `color-mix` according to two CSS variables; this module only writes those two percentages.
+// `color-mix` according to two CSS variables; this module writes those two percentages, plus the `data-tod` attribute
+// that the CSS fallback for browsers without `color-mix` reads.
 
 import { TIME_OF_DAY } from '../config/look.ts'
 
@@ -28,5 +29,6 @@ export function writePageTheme(theme: PageTheme, pageBlend: number, textBlend: n
   if (text !== theme.text) {
     theme.text = text
     document.documentElement.style.setProperty('--tod-text', PERCENT[text] as string)
+    document.documentElement.dataset.tod = text * 2 >= STEPS ? 'evening' : 'morning'
   }
 }
