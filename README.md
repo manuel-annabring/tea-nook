@@ -2,7 +2,9 @@
 
 A cozy, stylized low-poly 3D diorama of a kitchen tea nook for the web. The star is the custom-shader steam rising from the tea mug and the kettle. Built as a portfolio piece for 3D web work.
 
-Once a remote exists and GitHub Pages is enabled (Settings > Pages > Source: GitHub Actions), the `deploy.yml` workflow serves it from `https://<user>.github.io/tea-nook/`.
+Live: https://manuel-annabring.github.io/tea-nook/
+
+Every push to `main` runs the `deploy.yml` workflow (typecheck, lint, test, build) and publishes the result to GitHub Pages. A fork needs Pages enabled first (Settings > Pages > Source: GitHub Actions).
 
 ## Run
 

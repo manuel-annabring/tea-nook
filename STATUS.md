@@ -4,10 +4,11 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 
 ## Now
 
-- **Current phase:** Phase 3 (Interaction, UI and release prep) is done on branch `phase/3-interaction` (review `REVIEW-phase-3.md`: PASS, 0 blockers, 6 should-fix); Manuel's answers to the review are applied in the fix commit after it (D-136 to D-139). Not merged into `main` yet. Phase 2b and earlier are merged into `main`.
-- **State:** all four phase 3 slices are done; budgets met (table "Budget table (slice 3.3)"). Not verified: 60 fps and the 4x CPU throttle on Manuel's laptop, a real slow-3G load, the GitHub deploy, Safari and Firefox.
-- **Phase 3 (started 2026-11-19, branch `phase/3-interaction`):** prep done (D-116: taupe wall, closer hero, AO fix). Slices 3.1 (click to cycle tea, D-117 to D-122), 3.2 (overlay, D-123 to D-127) and 3.3 (performance and budget check, D-128 to D-132; every budget met, table "Budget table (slice 3.3)" below) and 3.4 (deploy workflow and README, D-133 to D-135) done; phase 3 is complete, review next.
-- **Next action:** Manuel's phase 3 review ("Try this" in `REVIEW-phase-3.md`), then merge `phase/3-interaction` into `main`, add a git remote and push (Claude never creates the remote). Review question 6 (`applyPose`) is done (D-139).
+- **Current phase:** none running. Phases 0 to 3 are done and merged into `main`, which is pushed to `origin`. Phase 4 has not started.
+- **Live site:** https://manuel-annabring.github.io/tea-nook/ (GitHub Pages, every push to `main` deploys). The first deploy run on 2026-11-19 failed because Pages was not enabled yet; the manual run after it succeeded. Checked on 2026-11-27: page, JS, CSS, `nook.glb` and `room_ao.png` return HTTP 200 (the live page was not opened in a browser).
+- **State:** budgets met (table "Budget table (slice 3.3)"). Not verified: 60 fps and the 4x CPU throttle on Manuel's laptop, a real slow-3G load, Safari and Firefox.
+- **Phase 3 (2026-11-19, branch `phase/3-interaction`):** prep (D-116: taupe wall, closer hero, AO fix), slices 3.1 (click to cycle tea, D-117 to D-122), 3.2 (overlay, D-123 to D-127), 3.3 (performance and budget check, D-128 to D-132) and 3.4 (deploy workflow and README, D-133 to D-135). Review `REVIEW-phase-3.md`: PASS, 0 blockers, 6 should-fix; Manuel's answers are applied (D-136 to D-139).
+- **Next action:** refine the phase 4 outline in SPEC.md (4.1 window light rays, 4.2 dust motes, 4.3 time-of-day toggle) in a spec session, including the evening lamp idea in "Notes".
 - **Blockers:** none.
 
 ## Slices
@@ -109,7 +110,7 @@ How the numbers were taken and what they mean:
 - The browser pane renders pages only while awake; the `data-nook-ready` flag may stay unset until a screenshot or other pane action. Poll again, then screenshot.
 - The Leva dev panel covers the right third of the view; hide it with `?panel=0` (slice 1.1).
 - `.claude/` is git-ignored, so permission settings and `launch.json` are local only.
-- There is no git remote. Do not push.
+- The remote `origin` is a public GitHub repository. A push to `main` deploys the live site, so only push `main` when Manuel says so.
 - Typewriter's Blender tooling to adapt lives in `~/Projects/typewriter/tools/` (outside this repo, read only).
 - The Blender add-on server must be started by Manuel for phase 2 only. Phases 1, 3, 4 and 5 use headless `Blender -b`.
 - Plan is Pro (5-hour window, weekly limit, extra usage off). Check `get_usage` before each slice.

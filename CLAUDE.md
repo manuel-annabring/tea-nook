@@ -34,7 +34,7 @@ Cozy stylized low-poly 3D diorama of a kitchen tea nook for the web. The star is
 Project-specific details (added on top of the block above; the block itself is copied from WORKFLOW.md section 5):
 
 - Phases marked **collaborative** in SPEC.md are not autonomous. They follow the "Blender MCP workflow" below with Manuel present. Autonomous phases use only headless Blender (`Blender -b`), never the live MCP session. Exception decided by Manuel on 2026-11-04: phase 2 slices 2.1 to 2.5 run autonomously and headless; the rules are in SPEC.md section 7, phase 2.
-- There is no git remote yet. Until Manuel adds one, "push" means nothing: commit on the phase branch and skip pushing. Never add a remote or create a GitHub repository.
+- The git remote is `origin`, a public GitHub repository. In phase mode, push the phase branch. A push to `main` deploys the live site (`deploy.yml`, https://manuel-annabring.github.io/tea-nook/), so merge into or push to `main` only when Manuel says so. Never add or change a remote, or create a GitHub repository.
 - Check plan usage with `mcp__ccd_session_mgmt__get_usage` (5-hour window "percentUsed" and "resetsAt"). Stop at a clean boundary at 80% or more (a slice can use a lot of that window, so do not start a slice you expect to run past it).
 - Each phase table in SPEC.md has a model and effort per slice. Start the slice's subagent with that model (Agent `model`) and effort (Agent `effort`).
 - Every worker brief points to "Code rules", "Shader rules" and "Blender and model rules" in this file, and lists the SPEC.md acceptance criteria verbatim.
