@@ -102,6 +102,8 @@ export interface LightPreset {
    * the shape). 0 = off.
    */
   rayStrength: number
+  /** Brightness (opacity) of a dust mote inside the window beam; outside it, `DUST.outside` of this. 0 = off. */
+  dustStrength: number
   /** Page and canvas background behind the diorama. */
   pageBackground: string
   /** Overlay text and the translucent pill behind it (CSS only, mirrored in `src/index.css`). */
@@ -147,6 +149,7 @@ export const LIGHT_PRESETS = {
     steamTint: '#FFFFFF',
     steamOpacity: 1,
     rayStrength: 0.4,
+    dustStrength: 0.75,
     pageBackground: BACKGROUND_COLOR,
     uiText: UI.text,
     uiPill: UI.pill,
@@ -174,6 +177,7 @@ export const LIGHT_PRESETS = {
     steamTint: '#FFD3AC',
     steamOpacity: 1,
     rayStrength: 0.38,
+    dustStrength: 0.7,
     pageBackground: '#3A3350',
     uiText: '#F2E6D0',
     uiPill: 'rgba(58, 51, 80, 0.86)',
@@ -238,6 +242,37 @@ export const RAYS = {
   /** The shadow of the horizontal cross bar: share of light removed and softness of its edges. */
   mullionDim: 0.6,
   mullionSoftness: 0.012,
+} as const
+
+/**
+ * The dust motes (slice 4.4): `count` soft round points drifting inside the box between `Dust_Min` and `Dust_Max`,
+ * bright inside the window beam (`dustStrength` per time of day, colour of the sun) and faint outside it. Lengths are in
+ * meters; the beam uses the fades of `RAYS` along its length and towards the surfaces.
+ */
+export const DUST = {
+  count: 260,
+  seed: 29,
+  /** Mean diameter, and the share by which single motes differ from it. */
+  size: 0.0065,
+  sizeSpread: 0.45,
+  /** Brightness of the faintest mote (the brightest is 1). */
+  minBrightness: 0.45,
+  /** Share of the radius of a point that is fully bright; from there it fades to the rim. */
+  core: 0.25,
+  /** Smallest point drawn, device pixels; smaller motes get fainter instead. */
+  minPixels: 1.5,
+  /** Brightness outside the beam as a share of the brightness inside. */
+  outside: 0.14,
+  /** Soft sides of the beam. */
+  beamSoftness: 0.04,
+  /** Fade towards the faces of the box (share of the box), hides the wrap-around. */
+  boxFade: 0.08,
+  /** Mean velocity (slowly sinking, away from the window) and its random part, meters per second. */
+  drift: [0.0022, -0.0014, 0.0006],
+  driftSpread: 0.0022,
+  /** Amplitude and speed (cycles per second) of the wobble around that drift. */
+  wobble: 0.008,
+  wobbleRate: [0.03, 0.09],
 } as const
 
 /** Camera pose as spherical offsets from the `Orbit_Target` marker (angles in degrees, distance in meters). */

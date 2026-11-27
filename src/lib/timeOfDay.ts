@@ -41,6 +41,8 @@ export interface TimeValues {
   steamOpacity: number
   /** Opacity of the window light rays (`Rays`). */
   rayStrength: number
+  /** Brightness of a dust mote inside the window beam (`Dust`). */
+  dustStrength: number
   /** sRGB components 0..1 (x = red, y = green, z = blue). */
   pageBackground: Vector3
 }
@@ -69,6 +71,7 @@ export function createTimeValues(): TimeValues {
     steamTint: new Color(),
     steamOpacity: 1,
     rayStrength: 0,
+    dustStrength: 0,
     pageBackground: new Vector3(),
   }
 }
@@ -94,6 +97,7 @@ export interface TimePatch {
   steamTint: string
   steamOpacity: number
   rayStrength: number
+  dustStrength: number
 }
 
 /** Applies the given fields to a compiled preset (on demand, not per frame). */
@@ -113,6 +117,7 @@ export function patchTimeValues(values: TimeValues, patch: Partial<TimePatch>): 
   values.bagGlow = num(patch.bagGlow, values.bagGlow)
   values.steamOpacity = num(patch.steamOpacity, values.steamOpacity)
   values.rayStrength = num(patch.rayStrength, values.rayStrength)
+  values.dustStrength = num(patch.dustStrength, values.dustStrength)
   color(patch.sunColor, values.sunColor)
   color(patch.hemisphereSkyColor, values.fillSkyColor)
   color(patch.hemisphereGroundColor, values.fillGroundColor)
@@ -147,6 +152,7 @@ export function readTimeValues(values: TimeValues): TimePatch {
     steamTint: hex(values.steamTint),
     steamOpacity: values.steamOpacity,
     rayStrength: values.rayStrength,
+    dustStrength: values.dustStrength,
   }
 }
 
@@ -180,6 +186,7 @@ export function compileTimePreset(preset: LightPreset): TimeValues {
     steamTint: preset.steamTint,
     steamOpacity: preset.steamOpacity,
     rayStrength: preset.rayStrength,
+    dustStrength: preset.dustStrength,
   })
   return values
 }
@@ -219,6 +226,7 @@ export function blendTimeValues(from: TimeValues, to: TimeValues, t: number, out
   out.steamTint.lerpColors(from.steamTint, to.steamTint, t)
   out.steamOpacity = lerp(from.steamOpacity, to.steamOpacity, t)
   out.rayStrength = lerp(from.rayStrength, to.rayStrength, t)
+  out.dustStrength = lerp(from.dustStrength, to.dustStrength, t)
   out.pageBackground.lerpVectors(from.pageBackground, to.pageBackground, t)
   return out
 }

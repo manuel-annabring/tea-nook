@@ -15,6 +15,9 @@ import { applyPalette } from './palette.ts'
 import { applyShadowFlags } from './shadows.ts'
 import { applyRoomAo, configureAoTexture, detachRoomAo, ROOM_AO_URL } from './roomAo.ts'
 import { readBeamWindow } from './beamWindow.ts'
+import type { DustBox } from '../lib/dust.ts'
+import { Dust } from './Dust.tsx'
+import { readDustBox } from './dustBox.ts'
 import { Rays } from './Rays.tsx'
 import { Steam } from './Steam.tsx'
 import { useStore } from '../store/useStore.ts'
@@ -24,7 +27,7 @@ import { applyNookTime, createNookTimeRig, resetNookTimeRig, type NookTimeRig } 
 /**
  * The diorama: the generated model plus behaviour. On mount it checks the model contract (dev only, throws with the
  * missing names), applies the palette and the baked AO texture, frames the camera on the `Orbit_Target` marker once the controls exist, and
- * attaches the two steams to the `Steam_Tea` and `Steam_Kettle` markers, adds the light rays of the window, and handles the tea selection (click on the mug
+ * attaches the two steams to the `Steam_Tea` and `Steam_Kettle` markers, adds the light rays of the window and the dust motes, and handles the tea selection (click on the mug
  * or a bag; the lifted bag and the tea surface colour follow the store's `teaIndex`). The sky card, the glow of the
  * lamp shade and a little self-light on the tea colours follow the time of day (`timeLive`).
  */
@@ -33,6 +36,7 @@ export function Nook() {
   const teaMarker = useRef<Object3D>(null)
   const kettleMarker = useRef<Object3D>(null)
   const beamWindow = useRef<BeamWindow>(null)
+  const dustBox = useRef<DustBox>(null)
   const camera = useThree((s) => s.camera)
   const scene = useThree((s) => s.scene)
   const controls = useThree((s) => s.controls) as OrbitControls | null
@@ -58,6 +62,7 @@ export function Nook() {
       ref.current = marker
     }
     beamWindow.current = readBeamWindow(root.current)
+    dustBox.current = readDustBox(root.current)
   }, [])
 
   // Bags, their hit boxes and the tea surface material, for the per-frame tea selection (`tickTeaSelection`).
@@ -116,6 +121,7 @@ export function Nook() {
       <Steam slot="tea" anchor={teaMarker} />
       <Steam slot="kettle" anchor={kettleMarker} />
       <Rays window={beamWindow} />
+      <Dust box={dustBox} window={beamWindow} />
     </>
   )
 }

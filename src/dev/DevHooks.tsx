@@ -1,8 +1,11 @@
 import { useFrame, useThree, type RootState } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
-import { Box3, Color, DirectionalLight, HemisphereLight, MathUtils, MeshStandardMaterial, PointLight, Raycaster, Spherical, Vector2, Vector3, type Camera, type Material, type Mesh, type Object3D, type Scene, type ShaderMaterial, type WebGLRenderer } from 'three'
+import { Box3, Color, DirectionalLight, HemisphereLight, MathUtils, MeshStandardMaterial, PointLight, Raycaster, Spherical, Vector2, Vector3, type Camera, type Material, type Mesh, type Object3D, type Points, type Scene, type ShaderMaterial, type WebGLRenderer } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { CAMERA, type CameraPose, type CameraPresetName } from '../config/look.ts'
+import { CAMERA, DUST, RAYS, type CameraPose, type CameraPresetName } from '../config/look.ts'
+import { createDustMotes, dustBeamWeight, dustPositionInto } from '../lib/dust.ts'
+import { ROOM_SURFACES } from '../lib/roomSurfaces.ts'
+import type { DustMaterial } from '../nook/dustMaterial.ts'
 import { TEA_BAG_NAMES } from '../nook/contract.ts'
 import type { SteamUniforms } from '../nook/steamMaterial.ts'
 import { getRoomAoIntensity, setRoomAoIntensity } from '../nook/roomAo.ts'
@@ -104,6 +107,11 @@ interface NookHooks {
   setAOIntensity: (intensity: number) => void
   /** Current `Room` AO strength, or null when the room has no standard materials. */
   getAOIntensity: () => number | null
+  /**
+   * Every dust mote now (from the live uniforms and the TypeScript twin of the shader): screen pixels, world height and
+   * beam weight (1 = fully in the window beam).
+   */
+  dust: () => { x: number; y: number; height: number; beam: number }[]
   /** Current values of a steam's uniforms (the meshes are named `SteamMesh_tea` and `SteamMesh_kettle`). */
   uniforms: (slot: 'tea' | 'kettle') => SteamUniformValues | null
   /**
@@ -575,6 +583,21 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
     getAOIntensity() {
       const room = find('Room')
       return room ? getRoomAoIntensity(room) : null
+    },
+    dust() {
+      const mesh = find('DustMesh') as Points | undefined
+      if (!mesh) return []
+      const u = (mesh.material as DustMaterial).uniforms
+      const aperture = { x: u.uWindowX.value, y: u.uCentre.value.x, z: u.uCentre.value.y, halfHeight: u.uHalf.value.x, halfWidth: u.uHalf.value.y }
+      const shape = { ...RAYS, softness: DUST.beamSoftness }
+      const box = { min: u.uBoxMin.value, size: u.uBoxSize.value }
+      const motes = createDustMotes(DUST)
+      const p = new Vector3()
+      return Array.from({ length: DUST.count }, (_, i) => {
+        dustPositionInto(p, motes, i, u.uTime.value, box, u.uWobble.value)
+        const beam = dustBeamWeight(p, aperture, u.uDirection.value, ROOM_SURFACES, shape) * u.uBeam.value
+        return { ...this.projectPoint(p.x, p.y, p.z), height: p.y, beam }
+      })
     },
     uniforms(slot) {
       const obj = find(`SteamMesh_${slot}`)

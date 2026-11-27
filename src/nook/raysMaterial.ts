@@ -5,7 +5,29 @@ import { ROOM_SURFACES, WINDOW_FRAME } from '../lib/roomSurfaces.ts'
 import type { TimeValues } from '../lib/timeOfDay.ts'
 import { raysFragmentShader, raysVertexShader } from '../shaders/rays.ts'
 
-export interface RaysUniforms {
+/** The surfaces a sun ray can end on, as uniforms (rays and dust). */
+export interface SurfaceUniforms {
+  uWorktopY: IUniform<number>
+  uWorktopRect: IUniform<Vector4>
+  uWallZ: IUniform<number>
+  uWallRect: IUniform<Vector4>
+  uFloorY: IUniform<number>
+  uFloorRect: IUniform<Vector4>
+}
+
+export function createSurfaceUniforms(): SurfaceUniforms {
+  const { worktop, backWall, floor } = ROOM_SURFACES
+  return {
+    uWorktopY: { value: worktop.y },
+    uWorktopRect: { value: new Vector4(worktop.xMin, worktop.xMax, worktop.zMin, worktop.zMax) },
+    uWallZ: { value: backWall.z },
+    uWallRect: { value: new Vector4(backWall.xMin, backWall.xMax, backWall.yMin, backWall.yMax) },
+    uFloorY: { value: floor.y },
+    uFloorRect: { value: new Vector4(floor.xMin, floor.xMax, floor.zMin, floor.zMax) },
+  }
+}
+
+export interface RaysUniforms extends SurfaceUniforms {
   [name: string]: IUniform
   uTime: IUniform<number>
   uColor: IUniform<Color>
@@ -27,12 +49,6 @@ export interface RaysUniforms {
   uDrift: IUniform<number>
   uCut: IUniform<Vector2>
   uBase: IUniform<number>
-  uWorktopY: IUniform<number>
-  uWorktopRect: IUniform<Vector4>
-  uWallZ: IUniform<number>
-  uWallRect: IUniform<Vector4>
-  uFloorY: IUniform<number>
-  uFloorRect: IUniform<Vector4>
 }
 
 export type RaysMaterial = ShaderMaterial & { uniforms: RaysUniforms }
@@ -79,7 +95,6 @@ export function applyRaysShape(material: RaysMaterial, shape: Partial<RaysShape>
  * mapped picture. The uniform objects live on `userData.uniforms` and are only mutated, never replaced.
  */
 export function createRaysMaterial(noise: DataTexture): RaysMaterial {
-  const { worktop, backWall, floor } = ROOM_SURFACES
   const uniforms: RaysUniforms = {
     uTime: { value: 0 },
     uColor: { value: new Color() },
@@ -99,12 +114,7 @@ export function createRaysMaterial(noise: DataTexture): RaysMaterial {
     uDrift: { value: 0 },
     uCut: { value: new Vector2() },
     uBase: { value: 0 },
-    uWorktopY: { value: worktop.y },
-    uWorktopRect: { value: new Vector4(worktop.xMin, worktop.xMax, worktop.zMin, worktop.zMax) },
-    uWallZ: { value: backWall.z },
-    uWallRect: { value: new Vector4(backWall.xMin, backWall.xMax, backWall.yMin, backWall.yMax) },
-    uFloorY: { value: floor.y },
-    uFloorRect: { value: new Vector4(floor.xMin, floor.xMax, floor.zMin, floor.zMax) },
+    ...createSurfaceUniforms(),
   }
   const material = new ShaderMaterial({
     uniforms,
