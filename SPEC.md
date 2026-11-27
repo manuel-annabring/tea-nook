@@ -98,6 +98,8 @@ Light mood (live lights, animated between the two presets in Phase 2):
 | Morning | `#FFF1D6`, high, from the window | `#BFD8F0` | bright, fresh, cool shadows |
 | Evening | `#FF9A57`, low, from the window | `#3C4E7A` | amber light, deep blue shadows, steam glows |
 
+> **AMENDMENT 2026-11-27 (slice 4.0), chosen by Manuel in the planning widgets:** the evening sun comes through the window at azimuth -75 and elevation 22 degrees (`sunAngles` convention; position (-1.347, 0.563, 0.361)); it replaces the untested `evening` position in `look.ts`, which shone from the front right. A pendant lamp over the right end of the worktop is the second evening light. The page behind the canvas turns plum `#3A3350` with cream text `#F2E6D0` (contrast 9.6 : 1). Light colours and intensities are tuned in slice 4.2 against the real render.
+
 What NOT to trust in references: proportions of real kitchens (we exaggerate the props for readability) and any realistic materials.
 
 ## 4. Scope
@@ -117,7 +119,8 @@ What NOT to trust in references: proportions of real kitchens (we exaggerate the
 
 - **Window light rays**: soft, noisy, additive planes from the window to the counter.
 - **Dust motes**: floating `Points` in the light, own shader.
-- **Time-of-day toggle** (morning / evening): light colors, sky card, rays, steam react.
+- **Time-of-day toggle** (morning / evening): light colors, sun direction, sky card, page background, rays, dust and steam react.
+- **Pendant lamp** (added 2026-11-27): hangs from the back wall over the right end of the worktop and gives warm light in the evening.
 - **Ambient audio**: kitchen / kettle loop, starts only after the first user interaction, mute button.
 - **Mobile support**: touch-friendly controls, portrait framing, reduced quality tier. Desktop comes first.
 
@@ -156,7 +159,8 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 | `Window_Glass` | mesh | none | Single quad in the window opening, faces into the room. Origin at its center. Code reads its bounds for the light rays |
 | `Window_Sky` | mesh | none | Quad a few cm outside `Window_Glass`, same size or larger. The "outside" color card; its color changes with time of day (Phase 2) |
 | `Rays_Origin` | Empty | none | Center of the window opening, where light rays start. Position only |
-| `Rays_Target` | Empty | none | Point on the counter where the light patch lands. The ray direction is `Rays_Target - Rays_Origin`. Position only |
+| `Rays_Target` | Empty | none | Point on the counter where the morning light patch roughly lands. Reference only since the 2026-11-27 amendment: the app takes the ray direction from the live sun. Position only |
+| `Lamp_Light` | Empty | none | **Added by the 2026-11-27 amendment.** Position of the pendant lamp's point light, inside the lower rim of the shade. Position only |
 | `Dust_Min`, `Dust_Max` | Empty | none | Opposite corners of the box in which dust motes float. Position only |
 | `Orbit_Target` | Empty | none | Point the orbit camera looks at (visual center of the diorama). Position only |
 
@@ -188,6 +192,14 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 
 > **AMENDMENT 2026-11-19 (slice H1, requested by Manuel):** the hero `Mug` is scaled to 0.9 about its base centre: about **0.08 high** (0.081, was 0.09), rim radius 0.0416; `TeaSurface` and `Steam_Tea` follow, the saucer in `Room` has radius 49.5 mm. Names, origins, parents and marker meanings are unchanged. Wherever this spec says the mug is "about 0.09" high, read 0.08. The wall shelf, jars and rail sit 35 mm further right (`SHIFT_X`), the hanging cups hang by the handle on J hooks and lean 16 degrees (cup pitch 64 mm); the layout table in section 7 is superseded where it differs (decision D-115).
 
+> **AMENDMENT 2026-11-27 (phase 4, slice 4.0; APPROVED by Manuel on 2026-11-27).**
+> - **New material:** `Mat_Lamp` (the pendant lamp shade; its glow is set at runtime). 18 + 1 = 19 contract materials, budget 20 unchanged (the shader materials of steam, rays and dust are not counted, D-137).
+> - **New marker:** `Lamp_Light` (Empty, no parent, identity rotation, scale 1).
+> - **New static geometry in `Room`:** the pendant lamp (layout in section 7, slice 4.0). Bracket and cord use `Mat_Iron`.
+> - **Changed meaning:** the ray direction comes from the live sun direction, not from `Rays_Target - Rays_Origin`. `Rays_Target` stays required but the app does not read it. `Rays_Origin` and the `Window_Glass` bounds still place the rays.
+> - **Budgets:** unchanged. Estimate with lamp, rays and dust: 44 draw calls of under 50, counted with the shadow pass.
+> - **Code twins:** `tools/blender/contract_spec.py`, `src/nook/contract.ts` and `PALETTE.Mat_Lamp` get the new names in slice 4.1.
+
 ### Budgets (proposed, confirm after the first export)
 
 | Item | Budget |
@@ -215,14 +227,16 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 - **Tea data**: `src/lib/teas.ts` is a plain typed list of 4 teas (proposed: Earl Grey, Green, Chamomile, Hibiscus) with steam color, density, speed and liquid color. Values are tuned in the spike. A click advances `teaIndex` in the store; components damp their uniforms toward the active tea in `useFrame`.
 - **Pointer to steam**: a ray-plane intersection (not an invisible mesh) writes world-space `pointerX, pointerY, pointerZ` and `pointerActive` into the store; `useFrame` reads them with `getState()` and damps them into `uPointer` and `uPointerBlend`. No component subscribes to those fields, so no React re-render per mouse move.
   > **AMENDMENT 2026-10-27 (slice 1 spike): decided.** `src/input/PointerProbe.tsx` listens on the canvas element (so it never blocks mesh pointer events, which slice 4 needs for the mug click), intersects the pointer ray with a horizontal plane at steam height, and writes the hit to the Zustand store. The push is applied in the vertex shader on the horizontal plane, scaled by height (`uPointerAnchor` keeps the base on the mug).
-- **Time of day (Phase 2)**: `timeOfDay` in the store; `src/lib/timeOfDay.ts` holds the two presets (light colors, intensities, sky color, ray strength, steam tint). A `useFrame` damps the live values toward the active preset.
+- **Time of day (Phase 2)**: `timeOfDay` in the store; the two presets live in `look.ts`, `src/lib/timeOfDay.ts` holds the pure blend between them (sun angles, light colors and intensities, lamp, sky color, page background, ray strength, steam tint). One `useFrame` damps a single blend factor from 0 (morning) to 1 (evening) and derives every live value from it, so nothing can drift apart (amended 2026-11-27).
+- **Evening lamp (amended 2026-11-27)**: one point light at `Lamp_Light`, no shadow (a point light shadow costs six extra passes). It is always in the scene with intensity 0 in the morning, because three compiles the number of lights into every shader program and adding one later would recompile them.
+- **Rays and dust (amended 2026-11-27)**: the ray direction is the direction from the live sun position to the world origin. The sun patch (shadow map), the rays and the brighter dust share this one source.
 - **Audio (Phase 2)**: created inside the first user-interaction handler; `muted` in the store; mute button in the overlay.
 - **UI overlay** (`src/ui`, plain React DOM next to the `Canvas`; `pointer-events: none` except on buttons):
   - Title "Tea Nook", top-left.
   - Hint, bottom-center: "Drag to orbit · Click the mug to change tea".
   - Tea name, bottom-center, fades in after each click.
   - Loader: full screen, progress bar from drei `useProgress`.
-  - Phase 2: time-of-day toggle top-right, mute button bottom-right.
+  - Phase 2: time-of-day toggle top-right, mute button bottom-right. In the evening the page background, title and pills switch to the evening colours.
 - **Hosting**: `vite.config.ts` sets `base: '/tea-nook/'`. All public asset URLs are built from `import.meta.env.BASE_URL`, never a leading `/`. Deploy workflow at `.github/workflows/deploy.yml` (build, upload Pages artifact, deploy); action versions are checked and pinned when written.
 - **Quality tiers (Phase 2, mobile)**: a single `quality` flag drives DPR cap, steam plane count and dust count. Not built in Phase 1.
 
@@ -239,7 +253,7 @@ Blender is Z up, the exporter maps it to glTF +Y up. World origin is the center 
 | 4 Interaction and UI | 3.1, 3.2 |
 | 5 Model detail pass | 2.0 to 2.5 |
 | 6 Phase 1 release | 3.3, 3.4 |
-| 7a to 7e Extras | 4.1 to 4.3, 5.1, 5.2 |
+| 7a to 7e Extras | 4.1 to 4.4 (renumbered 2026-11-27), 5.1, 5.2 |
 | 8 Final release | 5.3 |
 
 **Conventions for all slices**
@@ -259,10 +273,10 @@ Overview:
 | 2 | Real shapes and AO | slice 2.0 collaborative (done); 2.1 to 2.5 autonomous, headless Blender (Manuel's decision 2026-11-04) | the finished-looking model |
 | 2b | Details: back wall, tea box, cup and kettle polish | D0 collaborative (Manuel's decision 2026-11-06), D1 to D5 autonomous and headless | a richer scene with the tea bag objects in place for phase 3 |
 | 3 | Interaction, UI and release prep | autonomous | complete interaction loop, deployable build |
-| 4 | Extras: light | autonomous | window rays, dust, morning/evening toggle |
+| 4 | Extras: light | 4.0 collaborative (2026-11-27), 4.1 to 4.5 autonomous | pendant lamp, morning/evening toggle, window rays, dust |
 | 5 | Extras: audio, mobile, final release | autonomous | audio, mobile tier, final write-up |
 
-Phases 4 and 5 are outlines. Claude refines them after the phase 3 review, using what was learned (`WORKFLOW.md` section 11).
+Phase 4 was refined after the phase 3 review (slice 4.0, 2026-11-27). Phase 5 is an outline; Claude refines it after the phase 4 review, using what was learned (`WORKFLOW.md` section 11).
 
 ---
 
@@ -678,51 +692,117 @@ Phase 3 review ("Try this"): click through all four teas; hover and drag the mug
 
 ---
 
-### Phase 4: Extras: light (outline, refine after phase 3)
+### Phase 4: Extras: light (4.0 collaborative, 4.1 to 4.5 autonomous)
+
+Refined on 2026-11-27 with Manuel (slice 4.0). Branch `phase/4-light`. The time of day comes before the effects (look-defining first): both looks are visible after slice 4.2, and rays and dust are built for both from the start. 4.1 to 4.5 run autonomously; Blender work is headless and follows the phase 2b rules (re-runnable scripts, `nook-pre-<slice>.blend1` backups, `04_room.py` owns `Room`, previews, a "what I did in Blender and why" note, no shape gate). The only contract change is the 2026-11-27 amendment in section 5; any other one is a stop. Evidence goes to `review/phase-4/` (git-ignored). Pointer swirl, shelf shadow and other ideas stay notes in `STATUS.md`.
 
 | Slice | Name | Model and effort |
 |---|---|---|
-| 4.1 | Window light rays | Sonnet, high |
-| 4.2 | Dust motes | Sonnet, medium |
-| 4.3 | Time-of-day toggle | Sonnet, high |
+| 4.0 | Evening look, lamp and amendment | Sonnet, high (collaborative, with Manuel) |
+| 4.1 | Pendant lamp model | Sonnet, medium |
+| 4.2 | Time of day: presets, lamp light, toggle | Sonnet, high |
+| 4.3 | Window light rays | Sonnet, high |
+| 4.4 | Dust motes | Sonnet, medium |
+| 4.5 | Budgets, performance, polish and review | Sonnet, high |
 
-### Slice 4.1: Window light rays
-Goal: soft, noisy, additive planes from `Rays_Origin` toward `Rays_Target`, sized from `Window_Glass` bounds.
-Scope: `src/nook/Rays.tsx`, `src/shaders/rays.*`, `src/lib/` twin for any CPU maths, `src/config/look.ts`.
-Out of scope: time of day, dust.
-Depends on: 3.2
-Taste-critical: yes (recommended values, decision logged)
+### Slice 4.0: Evening look, lamp and amendment
+Goal: Manuel decides the evening sun, the page background and the lamp; phase 4 is specified and the contract amendment written.
+Scope: SPEC (sections 3 to 7), `DECISIONS.md`, `STATUS.md`.
+Out of scope: any model or code change.
+Mode: collaborative, with two planning widgets (sun and rays, lamp) built from the scene's dimensions.
+
+**Chosen values (2026-11-27).** Metres, Blender axes (x right, y back, z up; worktop top z = 0).
+
+| Part | Value |
+|---|---|
+| Evening sun | azimuth -75, elevation 22 degrees, same distance as the morning sun |
+| Evening page | background `#3A3350`, text `#F2E6D0` |
+| Lamp shade | pendant, centre (0.27, 0.00), lower rim z 0.280, 0.050 high, radius 0.045 at the lower rim narrowing to about 0.029 at the top, `Mat_Lamp` |
+| Lamp holder | arm from the back wall (y 0.225) forward to y 0.00 at z 0.410, cord down to the shade, small wall plate, `Mat_Iron` |
+| `Lamp_Light` | (0.27, 0.00, 0.285) |
+
+Starting values for slice 4.2, tunable there: `PALETTE.Mat_Lamp` `#E8C48A`, lamp light `#FFB35C`, evening sky card `#E8946A`, evening sun `#FF9A57`, hemisphere sky `#3C4E7A`.
+
 Acceptance criteria:
-- [ ] Base checks pass.
-- [ ] Ray direction equals `Rays_Target - Rays_Origin` (unit test of the pure function).
-- [ ] Rays do not write depth; screenshot from `hero` shows rays from the window to the counter; screenshot from `side` shows no hard plane edges.
-- [ ] Uniforms are on `material.userData` and mutated, not replaced (grep).
-- [ ] Draw calls still under 50 (2026-11-06 amendment, was 40); console clean.
+- [x] The chosen values are in the table above and logged in `DECISIONS.md`.
+- [x] Manuel approved the section 5 amendment (logged).
+- [x] Slices 4.1 to 4.5 are specified with criteria.
 
-### Slice 4.2: Dust motes
-Goal: `Points` floating inside the box `Dust_Min` to `Dust_Max`, own shader, brighter inside the ray area.
-Scope: `src/nook/Dust.tsx`, `src/shaders/dust.*`, `src/config/look.ts`.
-Out of scope: audio, mobile quality tier.
+### Slice 4.1: Pendant lamp model
+Goal: the pendant lamp hangs over the worktop, with the new material and marker in the contract.
+Scope: `tools/blender/steps/04_room.py` (lamp builder, marker), `05_ao_bake.py` only if the bake needs it, `contract_spec.py`, `src/nook/contract.ts`, `src/config/look.ts` (`PALETTE.Mat_Lamp`), `src/nook/` where the palette is applied, regenerated GLB and component.
+Out of scope: any light, glow or time-of-day code; moving or reshaping existing parts.
+Depends on: 4.0 approved
+Taste-critical: yes (shade shape; recommended values, decision logged)
+Acceptance criteria:
+- [ ] Base checks pass; console clean; `grep -r "__nook" dist` prints nothing.
+- [ ] Contract check passes with `Mat_Lamp` and `Lamp_Light`; the twin test passes; `Room` is still one mesh, the new slot is appended after the existing ones.
+- [ ] Shade and holder equal the slice 4.0 table within 5 mm and `Lamp_Light` within 1 mm (script output pasted).
+- [ ] Steam clearance at least 15 mm in plan view for every lamp part (script output pasted); a script table shows that the shade covers neither steam column on screen at azimuth 0, 10, 20, 25, 30 and 40.
+- [ ] `04_room.py --force` and `05_ao_bake.py` run twice give a byte-identical `room_ao.png`; `npm run gen:model` twice gives an identical file.
+- [ ] Budgets reported: 19 materials, draw calls under 50, GLB under 3 MB, triangles.
+- [ ] Previews (iso, front, side, top) and in-app `hero` and `front` screenshots; Claude states what it sees, including whether the arm crosses a steam column on screen.
+
+### Slice 4.2: Time of day: presets, lamp light, toggle
+Goal: a morning/evening toggle that damps sun direction, lights, lamp, sky card, page colours and steam tint to the active preset.
+Scope: `src/store/useStore.ts` (`timeOfDay`, toggle), `src/lib/timeOfDay.ts` with tests, `src/scene/`, `src/nook/` (sky card, lamp glow, steam tint), `src/ui/` and `src/index.css` (toggle top-right, evening colours), `src/config/look.ts`, `src/dev/` (hooks and Leva).
+Out of scope: rays, dust, audio, mobile, the model, persisting the choice.
 Depends on: 4.1
+Taste-critical: yes (evening look; the slice 4.0 values, the rest recommended and logged)
+Details: the app starts in the morning. The sun direction is blended as angles, so it keeps its distance. Dev only: `?time=evening` selects the preset on load, and the Leva `Light` folder edits the active preset. Colours and intensities are tuned against the real render.
+Acceptance criteria:
+- [ ] Base checks pass; console clean; `grep -r "__nook" dist` prints nothing.
+- [ ] Unit tests: the blend returns the morning preset at 0 and the evening preset at 1, and the evening sun equals azimuth -75 and elevation 22 within 0.1 degrees.
+- [ ] A real click on the toggle (top-right, usable with the keyboard, `aria-pressed`) switches `timeOfDay`; a second click returns to the morning.
+- [ ] After a click every live value converges within 2 s without a jump (sampled with `__nook.step`: monotone, no frame step larger than 25% of the total change).
+- [ ] `Window_Sky`, the lamp glow, the lamp light intensity (0 in the morning), the page background and the steam tint differ between the presets (values read in the app); the program count does not change when toggling.
+- [ ] The evening sun comes through the window; its shadow is not clipped at the start, three points inside and the end of the transition (screenshots); `?shadow=static` also updates.
+- [ ] Evening readability: the four tea bags stay distinguishable (sampled pixel colours differ pairwise by at least 30 in RGB distance) and the title, toggle and pills have a contrast of at least 4.5 : 1 in both presets.
+- [ ] No allocations and no `setState` in `useFrame` (grep and reading the callbacks).
+- [ ] Screenshots morning and evening at `hero`, `front` and azimuth 40; the morning looks as before apart from the lamp (compared with the phase 4.1 screenshot).
+
+### Slice 4.3: Window light rays
+Goal: soft, noisy, additive planes from the window along the live sun direction, sized from `Window_Glass` bounds.
+Scope: `src/nook/Rays.tsx`, `src/shaders/rays.*`, `src/lib/` twin for the CPU maths, `src/config/look.ts` (including a ray strength per preset), `src/dev/` (Leva folder).
+Out of scope: dust, changes to the light presets beyond ray values, the model.
+Depends on: 4.2
 Taste-critical: yes (recommended values, decision logged)
 Acceptance criteria:
-- [ ] Base checks pass.
-- [ ] Every mote stays inside the `Dust_Min`/`Dust_Max` box over 60 s of simulated time (unit test of the position function).
-- [ ] Count is a single constant in `look.ts`; one draw call.
-- [ ] Screenshot from `hero` shows motes; console clean.
+- [ ] Base checks pass; console clean; `grep -r "__nook" dist` prints nothing.
+- [ ] Unit tests of the pure functions: the ray direction points from the sun position to the world origin for both presets; a ray ends at the first of worktop top, back wall or floor.
+- [ ] The rays follow the sun during the transition (screenshot halfway) and their ends lie on the sun patch in both presets (screenshots).
+- [ ] Additive blending, `depthWrite: false`, raycasting disabled, one draw call; uniforms on `material.userData`, mutated and not replaced (grep).
+- [ ] No hard plane edges at azimuth 0, 25 and 40 in both presets (screenshots).
+- [ ] Both steams stay readable (screenshot pairs with rays on and off); real clicks on the mug and on a tea bag still select a tea.
+- [ ] Draw calls under 50.
 
-### Slice 4.3: Time-of-day toggle
-Goal: a morning/evening toggle that damps light colors, sky card, ray strength and steam tint to the active preset.
-Scope: `src/store/useStore.ts` (`timeOfDay`), `src/lib/timeOfDay.ts`, `src/ui/` (toggle top-right), `src/config/look.ts`.
-Out of scope: audio, mobile.
-Depends on: 4.2
-Taste-critical: yes (evening look; recommended values from section 3, decision logged)
+### Slice 4.4: Dust motes
+Goal: `Points` floating inside the box `Dust_Min` to `Dust_Max`, own shader, brighter inside the window beam.
+Scope: `src/nook/Dust.tsx`, `src/shaders/dust.*`, `src/lib/` twin, `src/config/look.ts`.
+Out of scope: audio, mobile quality tier, the model.
+Depends on: 4.3
+Taste-critical: yes (recommended values, decision logged)
 Acceptance criteria:
-- [ ] Base checks pass.
-- [ ] Clicking the toggle switches `timeOfDay`; live light colors converge to the preset within 2 s without a jump.
-- [ ] `Window_Sky` color changes; rays and steam tint change (values read from uniforms).
-- [ ] Morning and evening `hero` screenshots saved to `review/phase-4/`.
-- [ ] Console clean.
+- [ ] Base checks pass; console clean; `grep -r "__nook" dist` prints nothing.
+- [ ] Every mote stays inside the `Dust_Min`/`Dust_Max` box over 60 s of simulated time (unit test of the position function).
+- [ ] Unit test of the beam function: a point on a ray from the glass centre is inside, a point beside the beam is outside, for both presets.
+- [ ] Count is a single constant in `look.ts`; one draw call; `depthWrite: false`; raycasting disabled.
+- [ ] Screenshots from `hero` in both presets show motes that are brighter in the beam; draw calls under 50.
+
+### Slice 4.5: Budgets, performance, polish and review
+Goal: the finished phase is measured against every budget, checked in both presets and handed to Manuel.
+Scope: fixes inside existing files, `look.ts` values, `README.md`, `STATUS.md`.
+Out of scope: new features, quality tiers, changing budgets.
+Depends on: 4.4
+Taste-critical: no
+Acceptance criteria:
+- [ ] Base checks pass; console clean; `grep -r "__nook" dist` and `grep -r leva dist` print nothing; contract check passes.
+- [ ] Budget table in `STATUS.md` for both presets: triangles, GLB size, materials, draw calls with the shadow pass, `__nook.benchmark(2000)` twice, and the production-build frame time, compared with the slice 3.3 numbers.
+- [ ] The orbit corners at both distances in both presets: nothing clipped, both steams readable (screenshots).
+- [ ] `README.md` mentions the new features without unverified claims.
+- [ ] A fresh-context reviewer runs and `REVIEW-phase-4.md` is written; Manuel is notified; phase 5 is not started.
+
+Phase 4 review ("Try this"): toggle morning and evening several times, also in the middle of a transition; orbit in both looks and watch the rays and dust; click through the teas in the evening; check fps and the 4x CPU throttle on your laptop against the phase 3 numbers.
 
 ---
 
@@ -752,7 +832,7 @@ Acceptance criteria:
 Goal: touch controls, portrait framing and a reduced quality tier.
 Scope: `src/config/look.ts` (quality tiers), `src/scene/`, `src/ui/`.
 Out of scope: native apps.
-Depends on: 4.3
+Depends on: 4.5
 Taste-critical: no
 Acceptance criteria:
 - [ ] Base checks pass.

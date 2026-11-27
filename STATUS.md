@@ -4,11 +4,12 @@ Updated by Claude as the last step of every slice (`WORKFLOW.md` section 2). Rea
 
 ## Now
 
-- **Current phase:** none running. Phases 0 to 3 are done and merged into `main`, which is pushed to `origin`. Phase 4 has not started.
+- **Current phase:** 4 (Extras: light) on branch `phase/4-light`; slice 4.0 (collaborative spec session, 2026-11-27) is done, 4.1 to 4.5 have not started. Phases 0 to 3 are done and merged into `main`; the local `main` is one docs commit ahead of `origin` (not pushed, a push deploys).
 - **Live site:** https://manuel-annabring.github.io/tea-nook/ (GitHub Pages, every push to `main` deploys). The first deploy run on 2026-11-19 failed because Pages was not enabled yet; the manual run after it succeeded. Checked on 2026-11-27: page, JS, CSS, `nook.glb` and `room_ao.png` return HTTP 200 (the live page was not opened in a browser).
 - **State:** budgets met (table "Budget table (slice 3.3)"). Not verified: 60 fps and the 4x CPU throttle on Manuel's laptop, a real slow-3G load, Safari and Firefox.
 - **Phase 3 (2026-11-19, branch `phase/3-interaction`):** prep (D-116: taupe wall, closer hero, AO fix), slices 3.1 (click to cycle tea, D-117 to D-122), 3.2 (overlay, D-123 to D-127), 3.3 (performance and budget check, D-128 to D-132) and 3.4 (deploy workflow and README, D-133 to D-135). Review `REVIEW-phase-3.md`: PASS, 0 blockers, 6 should-fix; Manuel's answers are applied (D-136 to D-139).
-- **Next action:** refine the phase 4 outline in SPEC.md (4.1 window light rays, 4.2 dust motes, 4.3 time-of-day toggle) in a spec session, including the evening lamp idea in "Notes".
+- **Next action:** run slices 4.1 to 4.5 autonomously (Autonomy rules in `CLAUDE.md`, one subagent per slice with the model and effort of the SPEC phase 4 table).
+- **FPS baseline (Manuel, 2026-11-27, live site with the phase 3 build, Chrome, 10 s rAF snippet):** 119.8 fps, worst frame 25.0 ms. The 4x CPU throttle value has not been reported.
 - **Blockers:** none.
 
 ## Slices
@@ -34,7 +35,12 @@ Status values: `todo`, `in progress`, `done`, `blocked`. A slice is `done` only 
 | 3.2 | Overlay: title, hint, tea name, loader | autonomous | done | commit "3.2: overlay" | D-123 to D-127. Title top-left, hint and tea name bottom-centre (pill), loader with progress bar driven by `sceneReady` (production-safe). Contrast at 1280 x 720 hero: title 10.08 : 1, hint 9.15 : 1 worst case. Tea name opacity 0 / 1 / 0 at 0 / 0.5 / 3 s; real drag from the title changes the azimuth; overlay and title `pointer-events: none`. Production build (`npm run preview`) loader fades out and unmounts; no remote URLs in `index.html`, `src/ui`, CSS; typecheck, lint, 47 tests, build pass; `grep -r "__nook" dist` prints nothing; console only the THREE.Clock warning. Not verified: slow 3G throttle (bar caught mid-load instead). Evidence (local): `review/phase-3/s3.2-hero.jpg`, `s3.2-after-click.jpg`, `s3.2-loader.jpg`, `s3.2-loader-dev.jpg`, `s3.2-hero-1920.jpg` |
 | 3.3 | Performance and budget check | autonomous | done | commit "3.3: performance and budget check" | D-128 to D-132. All budgets met, no budget change, no model change; numbers and which build produced each in the table "Budget table (slice 3.3)". `__nook.stats()` now also returns unique model materials, steam materials, programs, geometries and textures (dev only; `grep -r "__nook" dist` and `grep -r leva dist` print nothing). Checks of the phase 3 additions: bag hit boxes are `visible={false}` (no draw call, 40 before and after), the overlay subscribes only to `sceneReady` and `teaIndex` (no per-frame data), the 3.1 and 3.2 `useFrame` callbacks allocate nothing. Typecheck, lint, 47 tests and build pass; console only the known `THREE.Clock` warning. |
 | 3.4 | Deploy workflow and README | autonomous | done | D-133 to D-135 | typecheck, lint, test, build pass; deploy.yml parsed with ruby YAML; preview at /tea-nook/ loads HTML, JS, CSS, GLB, room_ao.png all 200, console only THREE.Clock |
-| 4.1 to 4.3 | Extras: light (outline) | autonomous | todo | | Refine after phase 3 |
+| 4.0 | Evening look, lamp and amendment | collaborative | done | commit "4.0: phase 4 spec, evening look and lamp amendment" | D-140 to D-146. Sun, background and lamp chosen in planning widgets; amendment approved 2026-11-27 |
+| 4.1 | Pendant lamp model | autonomous | todo | | |
+| 4.2 | Time of day: presets, lamp light, toggle | autonomous | todo | | |
+| 4.3 | Window light rays | autonomous | todo | | |
+| 4.4 | Dust motes | autonomous | todo | | |
+| 4.5 | Budgets, performance, polish and review | autonomous | todo | | |
 | 5.1 to 5.3 | Extras: audio, mobile, final (outline) | autonomous | todo | | Refine after phase 4 |
 
 ## Phase 2 fixes
