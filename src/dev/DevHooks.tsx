@@ -39,9 +39,10 @@ interface NookHooks {
   pick: (x: number, y: number) => string | null
   /**
    * Last frame's draw calls and triangles (shadow pass included), the unique model materials in the scene graph
-   * (`materials`, named; invisible tea bag hit boxes and the dev pointer marker are not counted), the steam shader
-   * materials (`steamMaterials`, one per steam mesh), the compiled program count and the renderer's live geometry and
-   * texture counts. SPEC section 5 budgets `materials + steamMaterials` (at most 20).
+   * (`materials`, named; invisible tea bag hit boxes and the dev pointer marker are not counted), the effect shader
+   * materials (`steamMaterials`, one per steam mesh; `effectMaterials`, light rays and dust), the compiled program
+   * count and the renderer's live geometry and texture counts. SPEC section 5 budgets `materials` (at most 20); the
+   * shader materials of steam, rays and dust are not counted (amendment 2026-11-27).
    */
   stats: () => {
     drawCalls: number
@@ -49,6 +50,7 @@ interface NookHooks {
     materials: number
     materialNames: string[]
     steamMaterials: number
+    effectMaterials: number
     programs: number
     geometries: number
     textures: number
@@ -362,11 +364,13 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
       const { render, memory } = gl.info
       const names = new Set<string>()
       const steam = new Set<Material>()
+      const effects = new Set<Material>()
       scene.traverse((node) => {
         const material = (node as { material?: Material | Material[] }).material
         if (!material || node.userData.hitProxy || node.name === 'PointerMarker') return
         for (const m of Array.isArray(material) ? material : [material]) {
           if (node.name.startsWith('SteamMesh_')) steam.add(m)
+          else if (node.name === 'RaysMesh' || node.name === 'DustMesh') effects.add(m)
           else names.add(m.name)
         }
       })
@@ -376,6 +380,7 @@ function createHooks(rigRef: { current: Rig }): NookHooks {
         materials: names.size,
         materialNames: [...names].sort(),
         steamMaterials: steam.size,
+        effectMaterials: effects.size,
         programs: gl.info.programs?.length ?? 0,
         geometries: memory.geometries,
         textures: memory.textures,

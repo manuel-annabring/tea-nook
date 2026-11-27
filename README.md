@@ -6,6 +6,14 @@ Live: https://manuel-annabring.github.io/tea-nook/
 
 Every push to `main` runs the `deploy.yml` workflow (typecheck, lint, test, build) and publishes the result to GitHub Pages. A fork needs Pages enabled first (Settings > Pages > Source: GitHub Actions).
 
+## What is in the scene
+
+- Steam from the mug and the kettle, made with a custom shader. The mug steam and the tea in the mug change colour with the selected tea.
+- Morning and evening. The sun, the fill lights, the sky in the window, the steam tint and the page colours blend smoothly from one look to the other. The page starts in the morning and does not remember the choice.
+- A pendant lamp over the worktop. It is off in the morning; in the evening the shade glows and a warm point light (without shadows) comes on.
+- Light rays from the window that follow the direction of the sun, also during the change.
+- Dust motes drifting in the room, brighter inside the window beam. The objects in the room do not shade the rays or the dust.
+
 ## Run
 
 ```
@@ -32,9 +40,12 @@ three, @react-three/fiber, @react-three/drei, React 19, TypeScript (strict), Vit
 
 ## Controls
 
-- Drag to orbit, scroll or pinch to zoom.
-- Click the mug to change tea.
+- Drag to orbit, scroll or pinch to zoom. Orbit and zoom are limited, and there is no panning.
+- Click the mug to change to the next tea, or click a tea bag in the box to pick that tea.
+- Use the "Evening" switch at the top right to change between morning and evening (mouse or keyboard).
 - Move the pointer over the scene and the steam leans away from it.
+
+Touch devices have not been tested yet.
 
 ## Known console noise
 
