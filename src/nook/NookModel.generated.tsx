@@ -28,6 +28,7 @@ type GLTFResult = GLTF & {
     Room_10: THREE.Mesh
     Room_11: THREE.Mesh
     Room_12: THREE.Mesh
+    Room_13: THREE.Mesh
     TeaBag_0: THREE.Mesh
     TeaBag_1: THREE.Mesh
     TeaBag_2: THREE.Mesh
@@ -52,6 +53,7 @@ type GLTFResult = GLTF & {
     Mat_Bag1: THREE.MeshStandardMaterial
     Mat_Bag2: THREE.MeshStandardMaterial
     Mat_Bag3: THREE.MeshStandardMaterial
+    Mat_Lamp: THREE.MeshStandardMaterial
     Mat_Glass: THREE.MeshStandardMaterial
     Mat_Sky: THREE.MeshStandardMaterial
   }
@@ -65,6 +67,7 @@ export function Model(props: ThreeElements['group']) {
       <group name="Scene">
         <group name="Dust_Max" position={[0.3, 0.3, -0.15]} />
         <group name="Dust_Min" position={[-0.28, -0.05, 0.2]} />
+        <group name="Lamp_Light" position={[0.27, 0.285, 0]} />
         <group name="Orbit_Target" position={[0.14, 0, 0.12]} />
         <group name="Rays_Origin" position={[-0.31, 0.23, 0]} />
         <group name="Rays_Target" position={[-0.1, 0, 0]} />
@@ -90,6 +93,7 @@ export function Model(props: ThreeElements['group']) {
           <mesh name="Room_10" geometry={nodes.Room_10.geometry} material={materials.Mat_Bag1} />
           <mesh name="Room_11" geometry={nodes.Room_11.geometry} material={materials.Mat_Bag2} />
           <mesh name="Room_12" geometry={nodes.Room_12.geometry} material={materials.Mat_Bag3} />
+          <mesh name="Room_13" geometry={nodes.Room_13.geometry} material={materials.Mat_Lamp} />
         </group>
         <mesh name="TeaBag_0" geometry={nodes.TeaBag_0.geometry} material={materials.Mat_Bag0} position={[0.145, 0.015, 0.15]} />
         <mesh name="TeaBag_1" geometry={nodes.TeaBag_1.geometry} material={materials.Mat_Bag1} position={[0.175, 0.015, 0.15]} />

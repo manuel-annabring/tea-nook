@@ -33,6 +33,11 @@ Slice D3 adds the body of the tea box on the worktop (`build_tea_box`: a solid b
 dividers, all Mat_Wood, four slots whose centres come from `tools/blender/tea_layout.py`). The four packets are NOT part of `Room`: they are
 the objects `TeaBag_0..3` made by `08_tea_bags.py`. `check_tea_box` prints the clearance to the mug, the planned saucer, the kettle and the tin.
 
+Slice 4.1 adds the pendant lamp over the right end of the worktop (`build_lamp`: a bell shaped shade in the new material `Mat_Lamp`; a
+cap, a cord, an arm and a wall plate in `Mat_Iron`; layout in SPEC.md section 7, slice 4.0) and places the marker Empty `Lamp_Light`
+(created when missing, 2026-11-27 amendment). `check_lamp` prints and asserts the lamp against the 4.0 table (5 mm); `check_lamp_screen`
+projects the lamp and both steam columns with the app camera and fails when the shade overlaps a steam column on screen.
+
 Run (on a copy first, then on the real file):
   Blender -b tools/blender/nook.blend --python tools/blender/steps/04_room.py -- [output.blend]
 Option `--jar-glass=glass|tinted` overrides `JAR_GLASS` (used by the D1 spike).
@@ -52,6 +57,7 @@ import sys
 import bpy
 import bmesh
 from mathutils import Matrix, Quaternion, Vector
+from mathutils.geometry import convex_hull_2d
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import tea_layout as tea  # noqa: E402  (box and bag layout shared with 08_tea_bags.py)
@@ -310,6 +316,37 @@ SAUCER_PROFILE = [  # (radius, z); slice H1: the radii of the D4 profile times 0
 SAUCER_SIDES = 20
 SAUCER_SHARP_DEG = 50.0  # same angle rule as 06_smooth_shading.py: the rim edges stay crisp, the slopes are smooth
 TEA_BOX_GAP_MIN = 0.020  # box to mug, planned saucer, kettle and tin: at least 20 mm
+# ---- Slice 4.1: pendant lamp (SPEC.md section 7, slice 4.0 table; metres) ------------------------------------------------
+LAMP_XY = (0.27, 0.00)  # axis of the shade and the cord
+LAMP_RIM_Z, LAMP_SHADE_H = 0.280, 0.050  # lower rim above the worktop, height of the shade
+# Shade: a closed lathe of (radius, z above the lower rim): inner side from the axis down to the rim, the flat 3 mm rim, then the outer
+# side up to the closed top. A slightly domed bell (steeper at the bottom, rounder towards the top), 0.045 radius at the rim and 0.029 at the top.
+LAMP_SHADE_PROFILE = [
+    (0.0000, 0.0450),
+    (0.0255, 0.0450),
+    (0.0320, 0.0385),
+    (0.0372, 0.0280),
+    (0.0406, 0.0150),
+    (0.0420, 0.0000),  # inner rim edge
+    (0.0450, 0.0000),  # lower rim, widest point
+    (0.0450, 0.0040),
+    (0.0436, 0.0165),
+    (0.0402, 0.0302),
+    (0.0352, 0.0420),
+    (0.0290, 0.0500),
+    (0.0000, 0.0500),
+]
+LAMP_SEGMENTS = 16
+LAMP_CAP_PROFILE = [(0.0, -0.001), (0.0100, -0.001), (0.0100, 0.0055), (0.0065, 0.0090), (0.0, 0.0090)]  # iron collar, z above the shade top
+LAMP_CORD_R, LAMP_CORD_SIDES = 0.0022, 6
+LAMP_ARM_Z, LAMP_ARM_SECTION = 0.410, 0.008  # arm centre line height and square section (same as the cup rail)
+LAMP_ARM_END_Y = -0.004  # front end of the arm, just past the cord axis (y 0.00)
+LAMP_PLATE = (0.024, 0.006, 0.050)  # wall plate: width x, thickness y, height z, centred on the arm
+LAMP_LIGHT = (0.27, 0.00, 0.285)  # marker `Lamp_Light`: the point light of slice 4.2, inside the lower rim
+SCREEN_AZIMUTHS = (0, 10, 20, 25, 30, 40)  # camera azimuths of the lamp against steam screen table
+# Room-air wind drift of the steam (steam.vert.glsl): sideways (n - 0.5) * 2 * h^2 * wind per axis, n read from the noise texture. The
+# largest length of (n - 0.5) over a full period of both steam textures is 0.36 (measured with src/lib/perlin.ts, seeds of steamDefaults.ts).
+STEAM_WIND, WIND_NOISE_MAX = 0.07, 0.36
 BOX_TOL = 0.005  # a new part's bounding box must match the layout table within 5 mm
 HANG_BOX_TOL = 0.016  # slice H1: the hanging cups lean by HANG_TILT_DEG, so their boxes may differ more from the straight layout box
 CLEARANCE_MIN = 0.015  # plan-view distance of every new part to a steam column
@@ -324,6 +361,7 @@ NEW_MATERIAL_COLORS = {
     "Mat_Bag1": "#B5B84A",
     "Mat_Bag2": "#E0B84A",
     "Mat_Bag3": "#B3213F",
+    "Mat_Lamp": "#E8C48A",
 }
 for _arg in sys.argv:
     if _arg.startswith("--jar-glass="):
@@ -1064,6 +1102,40 @@ def build_saucer(bm):
     Shading.angle_faces.extend(faces)
 
 
+def build_lamp(bm):
+    """Slice 4.1: the pendant lamp. Shade (lathe, `Mat_Lamp`, shaded smooth with sharp edges by angle), an iron collar on top, a cord
+    up to the arm, the square arm from the back wall and the wall plate (all `Mat_Iron`). Parts that meet reach about 1 mm into each other."""
+    iron, shade = IDX["Mat_Iron"], IDX["Mat_Lamp"]
+    x, y = LAMP_XY
+    top = LAMP_RIM_Z + LAMP_SHADE_H
+    assert abs(max(z for _r, z in LAMP_SHADE_PROFILE) - LAMP_SHADE_H) < 1e-9, "LAMP_SHADE_H and LAMP_SHADE_PROFILE disagree"
+    tracked(bm, "lamp_shade", lambda: Shading.angle_faces.extend(lathe(bm, LAMP_SHADE_PROFILE, (x, y, LAMP_RIM_Z), shade, LAMP_SEGMENTS)))
+    tracked(bm, "lamp_cap", lambda: Shading.angle_faces.extend(lathe(bm, LAMP_CAP_PROFILE, (x, y, top), iron, 12)))
+    a = LAMP_ARM_SECTION / 2
+    cord_z0, cord_z1 = top + LAMP_CAP_PROFILE[-1][1] - EMBED, LAMP_ARM_Z - a + EMBED
+    tracked(bm, "lamp_cord", lambda: tube(bm, [(x, y, cord_z0), (x, y, cord_z1)], [LAMP_CORD_R] * 2, LAMP_CORD_SIDES, iron, smooth=True, ref_axis=(1, 0, 0)))
+    pw, pt, ph = LAMP_PLATE
+    # The arm ends inside the plate (not at its back face, which would be two coplanar faces).
+    tracked(bm, "lamp_arm", lambda: box(bm, (x - a, LAMP_ARM_END_Y, LAMP_ARM_Z - a), (x + a, WALL_FACE - pt / 2, LAMP_ARM_Z + a), iron))
+    tracked(bm, "lamp_plate", lambda: box(bm, (x - pw / 2, WALL_FACE + EMBED - pt, LAMP_ARM_Z - ph / 2), (x + pw / 2, WALL_FACE + EMBED, LAMP_ARM_Z + ph / 2), iron))
+
+
+def place_lamp_marker():
+    """The marker Empty `Lamp_Light` (2026-11-27 amendment): created when missing, no parent, identity rotation, scale 1."""
+    ob = bpy.data.objects.get("Lamp_Light")
+    if ob is None:
+        ref = bpy.data.objects["Rays_Target"]  # same collection and viewport look as the other markers
+        ob = bpy.data.objects.new("Lamp_Light", None)
+        ob.empty_display_type = ref.empty_display_type
+        ob.empty_display_size = ref.empty_display_size
+        for collection in ref.users_collection:
+            collection.objects.link(ob)
+    ob.parent = None
+    ob.rotation_euler = (0.0, 0.0, 0.0)
+    ob.scale = (1.0, 1.0, 1.0)
+    ob.location = LAMP_LIGHT
+
+
 def expected_boxes():
     """Layout table (SPEC.md section 7, phase 2b) as lower/upper corners per part name."""
     out = {}
@@ -1088,6 +1160,13 @@ def expected_boxes():
     mx, my = saucer_axis()
     out["saucer"] = ((mx - SAUCER_R, my - SAUCER_R, 0.0), (mx + SAUCER_R, my + SAUCER_R, 0.006))  # layout table: about 0.006 high
     out["tea_box"] = ((bx - tea.BOX_SIZE[0] / 2, by - tea.BOX_SIZE[1] / 2, 0.0), (bx + tea.BOX_SIZE[0] / 2, by + tea.BOX_SIZE[1] / 2, tea.BOX_SIZE[2]))
+    # Slice 4.1 lamp: the shade box is the SPEC 4.0 table (centre (0.27, 0), rim z 0.280, 0.050 high, radius 0.045), the holder parts follow
+    # from it (collar up to z 0.339, cord up to the arm, arm at z 0.410 from the wall to y 0.00, plate on the wall).
+    out["lamp_shade"] = ((0.225, -0.045, 0.280), (0.315, 0.045, 0.330))
+    out["lamp_cap"] = ((0.260, -0.010, 0.330), (0.280, 0.010, 0.339))
+    out["lamp_cord"] = ((0.268, -0.002, 0.338), (0.272, 0.002, 0.406))
+    out["lamp_arm"] = ((0.266, 0.000, 0.406), (0.274, 0.222, 0.414))
+    out["lamp_plate"] = ((0.258, 0.219, 0.385), (0.282, WALL_FACE, 0.435))
     return out
 
 
@@ -1415,6 +1494,188 @@ def check_frames(bm):
     assert worst > 0, "a frame overlaps the apparent steam"
 
 
+def check_lamp(bm):
+    """Slice 4.1: the built lamp against the SPEC 4.0 table (the numbers below are copied from the table, not from the builder constants),
+    material per part, the connections between the parts and the gap to the kettle underneath. Fails above 5 mm."""
+    bm.verts.ensure_lookup_table()
+
+    def verts(name):
+        return [bm.verts[k].co for k in range(*Parts.ranges[name])]
+
+    def span(name, k):
+        values = [p[k] for p in verts(name)]
+        return min(values), max(values)
+
+    shade = verts("lamp_shade")
+    sx, sy, sz = span("lamp_shade", 0), span("lamp_shade", 1), span("lamp_shade", 2)
+    cx, cy = (sx[0] + sx[1]) / 2, (sy[0] + sy[1]) / 2
+    r_low = max(math.hypot(p.x - cx, p.y - cy) for p in shade if p.z < sz[0] + 1e-6)
+    r_top = max(math.hypot(p.x - cx, p.y - cy) for p in shade if p.z > sz[1] - 1e-6)
+    ax, ay, az = span("lamp_arm", 0), span("lamp_arm", 1), span("lamp_arm", 2)
+    ox, oy, oz = span("lamp_cord", 0), span("lamp_cord", 1), span("lamp_cord", 2)
+    py, pz = span("lamp_plate", 1), span("lamp_plate", 2)
+    rows = [  # (what, table value, measured)
+        ("shade centre x", 0.270, cx),
+        ("shade centre y", 0.000, cy),
+        ("shade lower rim z", 0.280, sz[0]),
+        ("shade height", 0.050, sz[1] - sz[0]),
+        ("shade radius at the lower rim", 0.045, r_low),
+        ("shade radius at the top", 0.029, r_top),
+        ("arm back end y (plate, back wall face)", 0.225, py[1]),
+        ("arm front end y", 0.000, ay[0]),
+        ("arm centre line x", 0.270, (ax[0] + ax[1]) / 2),
+        ("arm centre line z", 0.410, (az[0] + az[1]) / 2),
+        ("cord x", 0.270, (ox[0] + ox[1]) / 2),
+        ("cord y", 0.000, (oy[0] + oy[1]) / 2),
+        ("wall plate centre z (arm height)", 0.410, (pz[0] + pz[1]) / 2),
+    ]
+    print("[04_room] 4.1 lamp against the slice 4.0 table (metres, deviation in mm, limit 5):")
+    worst = 0.0
+    for what, want, have in rows:
+        dev = abs(have - want) * 1000
+        worst = max(worst, dev)
+        print(f"  {what:40s} table {want:+.4f}  measured {have:+.4f}  dev {dev:4.1f}")
+    assert worst <= BOX_TOL * 1000, f"the lamp is off the 4.0 table by {worst:.1f} mm"
+    cap_z = span("lamp_cap", 2)
+    joints = [  # (joint, overlap in metres; positive = the two parts touch or reach into each other)
+        ("collar into shade top", sz[1] - cap_z[0]),
+        ("cord into collar", cap_z[1] - oz[0]),
+        ("cord into arm", oz[1] - az[0]),
+        ("arm into wall plate", ay[1] - py[0]),
+        ("plate into back wall", py[1] - WALL_FACE),
+    ]
+    print("  joints (overlap mm): " + ", ".join(f"{n} {v * 1000:.1f}" for n, v in joints))
+    assert all(v > 0 for _n, v in joints), "a lamp part floats"
+    bm.faces.ensure_lookup_table()
+    mats = {}
+    for name in [n for n in Parts.ranges if n.startswith("lamp_")]:
+        a, b = Parts.ranges[name]
+        mats[name] = sorted({ROOM_MATERIALS[f.material_index] for k in range(a, b) for f in bm.verts[k].link_faces})
+    print("  materials: " + ", ".join(f"{n} {'/'.join(m)}" for n, m in mats.items()))
+    assert mats == {n: (["Mat_Lamp"] if n == "lamp_shade" else ["Mat_Iron"]) for n in mats}, "lamp materials are wrong"
+    kettle_lo, kettle_hi = object_world_box(bpy.data.objects["Kettle"])
+    print(f"  vertical gap shade rim to the kettle top: {(sz[0] - kettle_hi.z) * 1000:.0f} mm; plan view shade y max {sy[1]:.4f}, kettle y min {kettle_lo.y:.4f}")
+    assert sz[0] - kettle_hi.z > 0.03, "the shade is too close above the kettle"
+
+
+def look_camera():
+    """Camera field of view, orbit polar angles and distances, read from src/config/look.ts (never hand-copied)."""
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    text = open(os.path.join(root, "src", "config", "look.ts")).read()
+    block = re.search(r"export const CAMERA = \{\n(.*?)^\}", text, re.S | re.M)
+    assert block, "CAMERA not found in look.ts"
+    body = block.group(1)
+
+    def number(key, src=body):
+        m = re.search(r"\b" + key + r": (-?[0-9.]+)", src)
+        assert m, f"{key} not found in CAMERA"
+        return float(m.group(1))
+
+    hero = re.search(r"hero: \{([^}]*)\}", body).group(1)
+    return (number("fov"), (number("polarMin"), number("polar", hero), number("polarMax")),
+            (number("distanceMin"), number("distance", hero), number("distanceMax")))
+
+
+def convex_hull(points):
+    return [points[i] for i in convex_hull_2d(points)]
+
+
+def segment_distance(p, a, b):
+    d = b - a
+    t = 0.0 if d.length_squared < 1e-12 else max(0.0, min(1.0, (p - a).dot(d) / d.length_squared))
+    return (p - (a + d * t)).length
+
+
+def polygon_gap(a, b):
+    """Distance between two convex 2D polygons (counter-clockwise or clockwise); negative = they overlap (depth along the best axis)."""
+    best = -1e18
+    for poly in (a, b):
+        for i, p in enumerate(poly):
+            e = poly[(i + 1) % len(poly)] - p
+            if e.length < 1e-9:
+                continue
+            n = Vector((-e.y, e.x)).normalized()
+            pa, pb = [n.dot(q) for q in a], [n.dot(q) for q in b]
+            best = max(best, min(pb) - max(pa), min(pa) - max(pb))
+    if best <= 0:
+        return best
+    return min(segment_distance(p, q[i], q[(i + 1) % len(q)]) for p_, q in ((a, b), (b, a)) for p in p_ for i in range(len(q)))
+
+
+def check_lamp_screen(bm):
+    """Slice 4.1: do the lamp parts cover a steam column on screen? Perspective projection like the app camera (1280 x 720, orbit around
+    ORBIT_TARGET). A steam column is taken as its envelope: at every height a horizontal disc of radius = steam radius * steamWidth(h)
+    around the marker axis, which contains the camera-facing plane at any twist (room-air wind drift and pointer push are not included;
+    the `spare` column says how far the steam may drift sideways before it would reach the shade). Fails when the shade overlaps."""
+    fov, polars, distances = look_camera()
+    width, height = 1280, 720
+    focal = (height / 2) / math.tan(math.radians(fov) / 2)
+    target = Vector(ORBIT_TARGET)
+    bm.verts.ensure_lookup_table()
+    parts = {n: [bm.verts[k].co.copy() for k in range(*Parts.ranges[n])] for n in Parts.ranges if n.startswith("lamp_")}
+    cols = steam_columns()
+
+    def gaps(azimuth, polar, distance, wind=0.0):
+        a, p = math.radians(azimuth), math.radians(polar)
+        eye = target + distance * Vector((math.sin(p) * math.sin(a), -math.sin(p) * math.cos(a), math.cos(p)))
+        fwd = (target - eye).normalized()
+        right = fwd.cross(Vector((0, 0, 1))).normalized()
+        up = right.cross(fwd)
+
+        def project(q):
+            d = q - eye
+            depth = d.dot(fwd)
+            return Vector((width / 2 + focal * d.dot(right) / depth, height / 2 - focal * d.dot(up) / depth)), depth
+
+        out = {}
+        hulls = {n: convex_hull([project(q)[0] for q in pts]) for n, pts in parts.items()}
+        px_per_m = focal / project(Vector((LAMP_XY[0], LAMP_XY[1], LAMP_RIM_Z + LAMP_SHADE_H / 2)))[1]
+        for cname, cx, cy, cz, h, radius, wb, wp in cols:
+            slices = []
+            steps = 48
+            for i in range(steps + 1):
+                t = i / steps
+                r = radius * steam_width(t, wb, wp) + 2 * t * t * wind * WIND_NOISE_MAX
+                slices.append([project(Vector((cx + r * math.cos(2 * math.pi * k / 32), cy + r * math.sin(2 * math.pi * k / 32), cz + t * h)))[0] for k in range(32)])
+            pieces = [convex_hull(slices[i] + slices[i + 1]) for i in range(steps)]
+            for n, hull in hulls.items():
+                g = min(polygon_gap(hull, piece) for piece in pieces)
+                out[(n, cname)] = (g, g / px_per_m)
+        return out
+
+    print(f"[04_room] 4.1 screen coverage at {width} x {height}, fov {fov:.0f}, polar {polars[1]:.0f}, distance {distances[1]} (hero); gap in px between the part's silhouette and the steam envelope, negative = overlap")
+    print("  az   " + "   ".join(f"{n[5:]:>5s}/tea  {n[5:]:>5s}/kettle" for n in parts) + "   shade spare drift (mm, tea / kettle)")
+    for az in SCREEN_AZIMUTHS:
+        g = gaps(az, polars[1], distances[1])
+        cells = "   ".join(f"{g[(n, 'tea')][0]:9.1f}  {g[(n, 'kettle')][0]:12.1f}" for n in parts)
+        print(f"  {az:2d}   {cells}   {g[('lamp_shade', 'tea')][1] * 1000:6.1f} / {g[('lamp_shade', 'kettle')][1] * 1000:5.1f}")
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    assert re.search(r"^\s*wind: " + str(STEAM_WIND) + ",", open(os.path.join(root, "src", "nook", "steamDefaults.ts")).read(), re.M), "steam wind changed: update STEAM_WIND"
+    print(f"[04_room] 4.1 screen coverage, worst case over polar {polars} and distance {distances} (px; azimuths {SCREEN_AZIMUTHS}):")
+    worst = {}
+    for az in SCREEN_AZIMUTHS:
+        for polar in polars:
+            for distance in distances:
+                for key, (g, mm) in gaps(az, polar, distance).items():
+                    if key not in worst or g < worst[key][0]:
+                        worst[key] = (g, mm, az, polar, distance)
+    for (n, cname), (g, mm, az, polar, distance) in worst.items():
+        print(f"  {n:11s} vs {cname:6s} steam: smallest gap {g:8.1f} px ({mm * 1000:6.1f} mm at the lamp) at azimuth {az}, polar {polar:.0f}, distance {distance}  {'COVERS' if g <= 0 else 'clear'}")
+    drifted = {}
+    for az in SCREEN_AZIMUTHS:
+        for polar in polars:
+            for distance in distances:
+                for key, (g, _mm) in gaps(az, polar, distance, STEAM_WIND).items():
+                    if key not in drifted or g < drifted[key][0]:
+                        drifted[key] = (g, az, polar, distance)
+    print("[04_room] 4.1 for reference, the same worst case with the steam envelope widened by the largest wind drift (not asserted; pointer push not included):")
+    for (n, cname), (g, az, polar, distance) in drifted.items():
+        if cname == "kettle" or n == "lamp_shade":
+            print(f"  {n:11s} vs {cname:6s} steam: {g:8.1f} px at azimuth {az}, polar {polar:.0f}, distance {distance}  {'overlaps' if g <= 0 else 'clear'}")
+    covered = [k for k, v in worst.items() if k[0] == "lamp_shade" and v[0] <= 0]
+    assert not covered, f"the shade covers a steam column on screen: {covered}"
+
+
 # ------------------------------------------------------------------------------ main ------------
 
 
@@ -1484,12 +1745,15 @@ def main():
     build_frames(bm, open_faces)
     build_tea_box(bm)
     build_saucer(bm)
+    build_lamp(bm)
     check_new_parts(bm)
     check_clearance(bm)
     check_frames(bm)
     check_tea_box(bm)
     check_saucer(bm)
     check_prop_footprints(bm)
+    check_lamp(bm)
+    check_lamp_screen(bm)
 
     # Outward normals for the closed solids; leaves and coins are open surfaces with explicit winding, so skip them.
     open_set = set(open_faces)
@@ -1509,6 +1773,7 @@ def main():
     bpy.data.objects["Dust_Min"].location = DUST_MIN
     bpy.data.objects["Dust_Max"].location = DUST_MAX
     bpy.data.objects["Orbit_Target"].location = ORBIT_TARGET
+    place_lamp_marker()
 
     tri = sum(len(p.vertices) - 2 for p in mesh.polygons)
     print(f"[04_room] triangles={tri} verts={len(mesh.vertices)} uv={[l.name for l in mesh.uv_layers]}")

@@ -27,6 +27,8 @@ export const CONTRACT_OBJECTS = [
   { name: 'Window_Sky', type: 'MESH', parent: null },
   { name: 'Rays_Origin', type: 'EMPTY', parent: null },
   { name: 'Rays_Target', type: 'EMPTY', parent: null },
+  // Added by the 2026-11-27 amendment (phase 4): position of the pendant lamp's point light.
+  { name: 'Lamp_Light', type: 'EMPTY', parent: null },
   { name: 'Dust_Min', type: 'EMPTY', parent: null },
   { name: 'Dust_Max', type: 'EMPTY', parent: null },
   { name: 'Orbit_Target', type: 'EMPTY', parent: null },
@@ -65,6 +67,8 @@ export const MATERIAL_NAMES = [
   'Mat_Bag1',
   'Mat_Bag2',
   'Mat_Bag3',
+  // Added by the 2026-11-27 amendment (phase 4): the pendant lamp shade.
+  'Mat_Lamp',
 ] as const
 
 export type MaterialName = (typeof MATERIAL_NAMES)[number]

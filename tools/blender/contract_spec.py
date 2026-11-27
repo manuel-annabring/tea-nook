@@ -22,6 +22,7 @@ OBJECTS = [
     ("Window_Sky", "MESH", None),
     ("Rays_Origin", "EMPTY", None),
     ("Rays_Target", "EMPTY", None),
+    ("Lamp_Light", "EMPTY", None),  # 2026-11-27 amendment (phase 4): position of the pendant lamp's point light
     ("Dust_Min", "EMPTY", None),
     ("Dust_Max", "EMPTY", None),
     ("Orbit_Target", "EMPTY", None),
@@ -55,6 +56,7 @@ MATERIALS = [
     "Mat_Bag1",
     "Mat_Bag2",
     "Mat_Bag3",
+    "Mat_Lamp",  # 2026-11-27 amendment (phase 4): the pendant lamp shade
 ]
 
 # Budgets (SPEC.md section 5; MAX_MATERIALS was 14 until the 2026-11-06 amendment, draw calls under 50 are checked in the app). Plain `NAME = number` lines (parsed by the vitest twin test).

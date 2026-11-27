@@ -37,6 +37,8 @@ export const PALETTE = {
   Mat_Bag1: teaColor(1),
   Mat_Bag2: teaColor(2),
   Mat_Bag3: teaColor(3),
+  // Phase 4 (SPEC section 5 amendment of 2026-11-27): the pendant lamp shade, a warm parchment. Its glow is added at runtime (slice 4.2).
+  Mat_Lamp: '#E8C48A',
 } as const
 
 export type MaterialName = keyof typeof PALETTE
